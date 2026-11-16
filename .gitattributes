@@ -1,3 +1,5 @@
+# 텍스트 파일은 OS·core.autocrlf 설정과 상관없이 LF로 통일 (아래 규칙이 우선)
+* text=auto eol=lf
 /gradlew text eol=lf
 *.bat text eol=crlf
 *.jar binary
