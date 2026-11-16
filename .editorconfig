@@ -1,0 +1,27 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Google Java Style: 스페이스 2칸, 한 줄 최대 100자 (실제 정렬은 google-java-format이 한다)
+[*.java]
+indent_style = space
+indent_size = 2
+max_line_length = 100
+
+[*.gradle]
+indent_style = tab
+indent_size = 4
+
+[*.{yml,yaml,json,xml}]
+indent_style = space
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.bat]
+end_of_line = crlf
