@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC
+    "-//Checkstyle//DTD SuppressionFilter Configuration 1.2//EN"
+    "https://checkstyle.org/dtds/suppressions_1_2.dtd">
+
+<!-- 내장 google_checks.xml에서 끄는 규칙 -->
+<suppressions>
+  <!-- Javadoc은 쓰지 않는다: 이름에 Javadoc이 들어간 규칙(MissingJavadocType, JavadocMethod 등) 전부 -->
+  <suppress checks="Javadoc" files=".*"/>
+</suppressions>
