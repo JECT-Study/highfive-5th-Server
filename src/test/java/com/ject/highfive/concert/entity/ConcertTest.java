@@ -1,6 +1,7 @@
 package com.ject.highfive.concert.entity;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.ject.highfive.concert.repository.ConcertRepository;
@@ -142,5 +143,79 @@ class ConcertTest {
     assertThat(found.getUpdatedBy()).isEqualTo(2L);
     assertThat(found.getCreatedBy()).isEqualTo(1L);
     assertThat(found.getGenres()).containsExactly(Genre.JAZZ);
+  }
+
+  @Test
+  @DisplayName("장르가 null이면 NPE가 아니라 IllegalArgumentException")
+  void nullGenresRejected() {
+    Concert concert = newConcert(Genre.ROCK);
+
+    assertThatThrownBy(() -> concert.changeGenres(null))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  @DisplayName("제목이 비었거나 30자를 넘으면 생성·수정 모두 거부한다")
+  void invalidTitleRejected() {
+    Concert concert = newConcert(Genre.ROCK);
+
+    for (String title : new String[] {null, "", "  ", "가".repeat(31)}) {
+      assertThatThrownBy(() -> newConcertWithTitle(title))
+          .isInstanceOf(IllegalArgumentException.class);
+      assertThatThrownBy(() -> updateTitle(concert, title))
+          .isInstanceOf(IllegalArgumentException.class);
+    }
+    assertThatCode(() -> newConcertWithTitle("가".repeat(30))).doesNotThrowAnyException();
+  }
+
+  @Test
+  @DisplayName("모집 팀 수가 1 미만이면 생성·수정 모두 거부한다")
+  void recruitTeamCountBelowOneRejected() {
+    Concert concert = newConcert(Genre.ROCK);
+
+    assertThatThrownBy(() -> newConcertWithTeamCount(0))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(
+            () ->
+                concert.update(
+                    2L,
+                    "제목",
+                    -1,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    List.of(Genre.ROCK)))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatCode(() -> newConcertWithTeamCount(1)).doesNotThrowAnyException();
+  }
+
+  private Concert newConcertWithTitle(String title) {
+    return Concert.builder()
+        .hostBandId(3L)
+        .createdBy(1L)
+        .title(title)
+        .recruitTeamCount(3)
+        .genres(List.of(Genre.ROCK))
+        .build();
+  }
+
+  private Concert newConcertWithTeamCount(int count) {
+    return Concert.builder()
+        .hostBandId(3L)
+        .createdBy(1L)
+        .title("제목")
+        .recruitTeamCount(count)
+        .genres(List.of(Genre.ROCK))
+        .build();
+  }
+
+  private void updateTitle(Concert concert, String title) {
+    concert.update(
+        2L, title, 3, null, null, null, null, null, null, null, null, List.of(Genre.ROCK));
   }
 }

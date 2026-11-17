@@ -18,7 +18,6 @@ import java.time.LocalTime;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.Objects;
 import java.util.Set;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -30,6 +29,8 @@ import lombok.NoArgsConstructor;
 @Table(name = "concerts")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Concert extends BaseTimeEntity {
+
+  private static final int TITLE_MAX_LENGTH = 30;
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -106,6 +107,8 @@ public class Concert extends BaseTimeEntity {
       Integer rentalFee,
       String posterFileId,
       Collection<Genre> genres) {
+    validateTitle(title);
+    validateRecruitTeamCount(recruitTeamCount);
     this.hostBandId = hostBandId;
     this.createdBy = createdBy;
     this.updatedBy = createdBy;
@@ -129,12 +132,24 @@ public class Concert extends BaseTimeEntity {
 
   // 빠진 장르는 행이 지워지고(hard delete, 의사결정 D9) 새 장르는 추가된다
   public void changeGenres(Collection<Genre> requested) {
-    Set<Genre> wanted = new HashSet<>(Objects.requireNonNull(requested));
-    if (wanted.isEmpty()) {
+    if (requested == null || requested.isEmpty()) {
       throw new IllegalArgumentException("공연 장르는 하나 이상이어야 합니다.");
     }
+    Set<Genre> wanted = new HashSet<>(requested);
     genres.retainAll(wanted);
     genres.addAll(wanted);
+  }
+
+  private static void validateTitle(String title) {
+    if (title == null || title.isBlank() || title.length() > TITLE_MAX_LENGTH) {
+      throw new IllegalArgumentException("공연 제목은 1자 이상 30자 이하여야 합니다.");
+    }
+  }
+
+  private static void validateRecruitTeamCount(int recruitTeamCount) {
+    if (recruitTeamCount < 1) {
+      throw new IllegalArgumentException("모집 팀 수는 1 이상이어야 합니다.");
+    }
   }
 
   public void update(
@@ -150,6 +165,8 @@ public class Concert extends BaseTimeEntity {
       Integer rentalFee,
       String posterFileId,
       Collection<Genre> genres) {
+    validateTitle(title);
+    validateRecruitTeamCount(recruitTeamCount);
     this.updatedBy = updatedBy;
     this.title = title;
     this.recruitTeamCount = recruitTeamCount;
