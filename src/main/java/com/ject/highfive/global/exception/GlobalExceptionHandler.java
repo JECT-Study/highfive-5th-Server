@@ -98,12 +98,16 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
   public ResponseEntity<ApiResponse<Void>> handleMethodNotSupported(
       HttpRequestMethodNotSupportedException e) {
-    return toResponse(CommonErrorCode.METHOD_NOT_ALLOWED);
+    // 405 응답은 허용 메서드를 알려주는 Allow 헤더를 함께 보내야 한다 (RFC 9110)
+    CommonErrorCode errorCode = CommonErrorCode.METHOD_NOT_ALLOWED;
+    return ResponseEntity.status(errorCode.getStatus())
+        .headers(e.getHeaders())
+        .body(ApiResponse.error(errorCode));
   }
 
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ApiResponse<Void>> handleException(Exception e) {
-    // 위에서 따로 처리하지 않은 Spring MVC 예외(415 등)는 원래 상태 코드를 유지한다
+    // 위에서 따로 처리하지 않은 Spring MVC 예외(415 등)는 원래 상태 코드와 헤더(Accept 등)를 유지한다
     if (e instanceof ErrorResponse errorResponse
         && errorResponse.getStatusCode().is4xxClientError()) {
       CommonErrorCode errorCode = CommonErrorCode.BAD_REQUEST;
@@ -114,7 +118,9 @@ public class GlobalExceptionHandler {
               errorCode.getMessage(),
               null,
               null);
-      return ResponseEntity.status(errorResponse.getStatusCode()).body(body);
+      return ResponseEntity.status(errorResponse.getStatusCode())
+          .headers(errorResponse.getHeaders())
+          .body(body);
     }
     log.error("처리하지 못한 예외", e);
     return toResponse(CommonErrorCode.INTERNAL_SERVER_ERROR);
