@@ -2,6 +2,9 @@ package com.ject.highfive.global.exception;
 
 import com.ject.highfive.global.common.response.ApiResponse;
 import com.ject.highfive.global.common.response.FieldErrorResponse;
+import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.ElementKind;
+import jakarta.validation.Path;
 import java.util.List;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
@@ -48,6 +51,20 @@ public class GlobalExceptionHandler {
       HandlerMethodValidationException e) {
     List<FieldErrorResponse> errors =
         e.getParameterValidationResults().stream().flatMap(this::toFieldErrors).toList();
+    return toResponse(CommonErrorCode.INVALID_INPUT, errors);
+  }
+
+  // 클래스에 @Validated를 붙인 컨트롤러·서비스에서 메서드 검증이 실패한 경우
+  @ExceptionHandler(ConstraintViolationException.class)
+  public ResponseEntity<ApiResponse<Void>> handleConstraintViolation(
+      ConstraintViolationException e) {
+    List<FieldErrorResponse> errors =
+        e.getConstraintViolations().stream()
+            .map(
+                violation ->
+                    new FieldErrorResponse(
+                        toFieldName(violation.getPropertyPath()), violation.getMessage()))
+            .toList();
     return toResponse(CommonErrorCode.INVALID_INPUT, errors);
   }
 
@@ -116,6 +133,17 @@ public class GlobalExceptionHandler {
     String field =
         error instanceof FieldError fieldError ? fieldError.getField() : error.getObjectName();
     return new FieldErrorResponse(field, error.getDefaultMessage());
+  }
+
+  // 경로(예: save.request.nickname, getCodes.types[1].<list element>)에서 마지막 필드·파라미터 이름
+  private String toFieldName(Path propertyPath) {
+    String field = propertyPath.toString();
+    for (Path.Node node : propertyPath) {
+      if (node.getKind() == ElementKind.PROPERTY || node.getKind() == ElementKind.PARAMETER) {
+        field = node.getName();
+      }
+    }
+    return field;
   }
 
   private Stream<FieldErrorResponse> toFieldErrors(ParameterValidationResult result) {

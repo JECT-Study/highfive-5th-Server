@@ -74,6 +74,17 @@ class GlobalExceptionHandlerTest {
   }
 
   @Test
+  @DisplayName("@Validated 메서드 검증 실패도 COMMON 004와 마지막 필드 이름을 돌려준다")
+  void constraintViolationReturnsFieldErrors() throws Exception {
+    mockMvc
+        .perform(get("/test/violation"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("COMMON_004"))
+        .andExpect(jsonPath("$.errors[0].field").value("name"))
+        .andExpect(jsonPath("$.errors[0].reason").value("이름은 필수입니다."));
+  }
+
+  @Test
   @DisplayName("필수 파라미터 누락은 COMMON 004다")
   void missingParamIsInvalidInput() throws Exception {
     mockMvc

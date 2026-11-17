@@ -1,10 +1,16 @@
 package com.ject.highfive.global.exception;
 
 import com.ject.highfive.global.common.response.ApiResponse;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Valid;
+import jakarta.validation.Validation;
+import jakarta.validation.ValidatorFactory;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;
+import java.lang.reflect.Method;
 import java.util.Map;
+import java.util.Set;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -23,6 +29,11 @@ class ExceptionTestController {
   record TestRequest(@NotBlank(message = "이름은 필수입니다.") String name) {}
 
   record TestData(String value) {}
+
+  // @Validated 서비스처럼 메서드 파라미터 검증이 실패하는 상황을 만들기 위한 클래스
+  static class TestService {
+    void save(@Valid TestRequest request) {}
+  }
 
   @Getter
   @RequiredArgsConstructor
@@ -68,5 +79,18 @@ class ExceptionTestController {
   @GetMapping("/unexpected")
   ApiResponse<Void> unexpected() {
     throw new IllegalStateException("내부 정보가 담긴 메시지");
+  }
+
+  @GetMapping("/violation")
+  ApiResponse<Void> violation() throws NoSuchMethodException {
+    Method save = TestService.class.getDeclaredMethod("save", TestRequest.class);
+    try (ValidatorFactory factory = Validation.buildDefaultValidatorFactory()) {
+      Set<ConstraintViolation<TestService>> violations =
+          factory
+              .getValidator()
+              .forExecutables()
+              .validateParameters(new TestService(), save, new Object[] {new TestRequest("")});
+      throw new ConstraintViolationException(violations);
+    }
   }
 }
