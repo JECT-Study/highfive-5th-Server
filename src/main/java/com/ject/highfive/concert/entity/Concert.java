@@ -30,8 +30,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Concert extends BaseTimeEntity {
 
-  private static final int TITLE_MAX_LENGTH = 30;
-
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
@@ -107,8 +105,6 @@ public class Concert extends BaseTimeEntity {
       Integer rentalFee,
       String posterFileId,
       Collection<Genre> genres) {
-    validateTitle(title);
-    validateRecruitTeamCount(recruitTeamCount);
     this.hostBandId = hostBandId;
     this.createdBy = createdBy;
     this.updatedBy = createdBy;
@@ -132,52 +128,8 @@ public class Concert extends BaseTimeEntity {
 
   // 빠진 장르는 행이 지워지고(hard delete, 의사결정 D9) 새 장르는 추가된다
   public void changeGenres(Collection<Genre> requested) {
-    if (requested == null || requested.isEmpty()) {
-      throw new IllegalArgumentException("공연 장르는 하나 이상이어야 합니다.");
-    }
     Set<Genre> wanted = new HashSet<>(requested);
     genres.retainAll(wanted);
     genres.addAll(wanted);
-  }
-
-  private static void validateTitle(String title) {
-    if (title == null || title.isBlank() || title.length() > TITLE_MAX_LENGTH) {
-      throw new IllegalArgumentException("공연 제목은 1자 이상 30자 이하여야 합니다.");
-    }
-  }
-
-  private static void validateRecruitTeamCount(int recruitTeamCount) {
-    if (recruitTeamCount < 1) {
-      throw new IllegalArgumentException("모집 팀 수는 1 이상이어야 합니다.");
-    }
-  }
-
-  public void update(
-      Long updatedBy,
-      String title,
-      int recruitTeamCount,
-      LocalDate performDate,
-      LocalTime startTime,
-      LocalTime endTime,
-      String region,
-      String place,
-      String address,
-      Integer rentalFee,
-      String posterFileId,
-      Collection<Genre> genres) {
-    validateTitle(title);
-    validateRecruitTeamCount(recruitTeamCount);
-    this.updatedBy = updatedBy;
-    this.title = title;
-    this.recruitTeamCount = recruitTeamCount;
-    this.performDate = performDate;
-    this.startTime = startTime;
-    this.endTime = endTime;
-    this.region = region;
-    this.place = place;
-    this.address = address;
-    this.rentalFee = rentalFee;
-    this.posterFileId = posterFileId;
-    changeGenres(genres);
   }
 }
