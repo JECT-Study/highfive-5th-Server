@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.ject.highfive.concert.repository.ConcertRepository;
 import com.ject.highfive.concert.repository.ConcertTeamRepository;
-import com.ject.highfive.support.RepositoryTest;
+import com.ject.highfive.support.MySqlRepositoryTest;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -15,7 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 import org.springframework.dao.DataIntegrityViolationException;
 
-@RepositoryTest
+@MySqlRepositoryTest
 class ConcertTeamTest {
 
   @Autowired ConcertRepository concertRepository;

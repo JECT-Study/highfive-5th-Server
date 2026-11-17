@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.ject.highfive.concert.repository.ConcertRepository;
-import com.ject.highfive.support.RepositoryTest;
+import com.ject.highfive.support.MySqlRepositoryTest;
 import jakarta.persistence.PersistenceException;
 import java.time.LocalDate;
 import java.util.List;
@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 
-@RepositoryTest
+@MySqlRepositoryTest
 class ConcertTest {
 
   @Autowired ConcertRepository concertRepository;

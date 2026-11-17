@@ -15,4 +15,4 @@ import org.springframework.context.annotation.Import;
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Import({MySqlContainerConfig.class, JpaAuditingConfig.class})
-public @interface RepositoryTest {}
+public @interface MySqlRepositoryTest {}
