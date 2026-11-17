@@ -129,4 +129,14 @@ class ApiDocsTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.code").value("COMMON_000"));
   }
+
+  @Test
+  @DisplayName("@ResponseStatus(CREATED)를 붙인 API는 Swagger에도 201로 표시된다")
+  void responseStatusIsDocumentedInSwagger() throws Exception {
+    // 테스트 전용 컨트롤러(ExceptionTestController)의 POST /test/created로 확인한다
+    mockMvc
+        .perform(get("/v3/api-docs"))
+        .andExpect(jsonPath("$.paths['/test/created'].post.responses['201']").exists())
+        .andExpect(jsonPath("$.paths['/test/created'].post.responses['200']").doesNotExist());
+  }
 }
