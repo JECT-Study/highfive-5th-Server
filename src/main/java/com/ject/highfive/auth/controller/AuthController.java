@@ -10,6 +10,7 @@ import com.ject.highfive.user.entity.UserStatus;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.Map;
@@ -31,6 +32,7 @@ public class AuthController {
           "앱 SDK로 받은 소셜 ID 토큰을 검증하고 서비스 토큰을 발급한다. 처음이면 가입(PENDING)까지 처리한다.\n\n"
               + "에러: AUTH_006(소셜 토큰 검증 실패), AUTH_007(지원하지 않는 provider), COMMON_004\n\n"
               + "**현재는 가짜 응답**")
+  @SecurityRequirements
   @PostMapping("/login/{provider}")
   public ApiResponse<LoginResponse> login(
       @Parameter(
@@ -54,6 +56,7 @@ public class AuthController {
           "리프레시 토큰으로 액세스·리프레시 토큰을 둘 다 새로 발급한다. 앱은 AUTH_002를 받았을 때만 호출한다.\n\n"
               + "에러: AUTH_004(리프레시 토큰 만료·불일치, 다른 기기 로그인 포함), COMMON_004\n\n"
               + "**현재는 가짜 응답**")
+  @SecurityRequirements
   @PostMapping("/refresh")
   public ApiResponse<TokenResponse> refresh(@RequestBody @Valid TokenRefreshRequest request) {
     return ApiResponse.success(new TokenResponse("mock-access-token", "mock-refresh-token"));

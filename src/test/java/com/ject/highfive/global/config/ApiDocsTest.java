@@ -60,4 +60,35 @@ class ApiDocsTest {
         .andExpect(jsonPath("$.data.GENRE[0].code").value("ROCK"))
         .andExpect(jsonPath("$.data.POSITION").doesNotExist());
   }
+
+  @Test
+  @DisplayName("로그인·토큰 재발급만 Swagger에서 인증 없이 표시된다")
+  void publicAuthApisHaveNoSecurityRequirement() throws Exception {
+    mockMvc
+        .perform(get("/v3/api-docs"))
+        .andExpect(jsonPath("$.paths['/api/v1/auth/login/{provider}'].post.security").isEmpty())
+        .andExpect(jsonPath("$.paths['/api/v1/auth/refresh'].post.security").isEmpty())
+        .andExpect(jsonPath("$.paths['/api/v1/auth/logout'].post.security").doesNotExist())
+        .andExpect(jsonPath("$.security[0].bearerAuth").exists());
+  }
+
+  @Test
+  @DisplayName("코드 종류를 비워 보내면 COMMON 004다")
+  void codesWithEmptyTypesIsInvalidInput() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/codes").param("types", ""))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("COMMON_004"))
+        .andExpect(jsonPath("$.errors[0].field").value("types"));
+  }
+
+  @Test
+  @DisplayName("코드 종류에 빈 항목이 섞여 있으면 COMMON 004다")
+  void codesWithBlankTypeIsInvalidInput() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/codes").param("types", "GENRE,"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("COMMON_004"))
+        .andExpect(jsonPath("$.errors[0].field").value("types"));
+  }
 }

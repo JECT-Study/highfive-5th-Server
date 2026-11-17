@@ -6,6 +6,8 @@ import com.ject.highfive.global.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -43,8 +45,11 @@ public class CodeController {
               + "**현재는 가짜 응답 (목록은 임시값)**")
   @GetMapping
   public ApiResponse<Map<CodeType, List<CodeResponse>>> getCodes(
-      @Parameter(description = "가져올 코드 종류 (쉼표 구분)", example = "GENRE,POSITION") @RequestParam
-          List<CodeType> types) {
+      // ?types= 는 빈 목록으로, ?types=GENRE, 는 null 원소로 바인딩되므로 둘 다 막는다
+      @Parameter(description = "가져올 코드 종류 (쉼표 구분)", example = "GENRE,POSITION")
+          @RequestParam
+          @NotEmpty(message = "코드 종류는 필수입니다.")
+          List<@NotNull(message = "코드 종류가 비어 있습니다.") CodeType> types) {
     Map<CodeType, List<CodeResponse>> codes = new EnumMap<>(CodeType.class);
     types.forEach(type -> codes.put(type, MOCK_CODES.get(type)));
     return ApiResponse.success(codes);

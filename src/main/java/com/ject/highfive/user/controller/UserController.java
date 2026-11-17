@@ -59,6 +59,8 @@ public class UserController {
           "닉네임 형식과 중복을 확인한다. 중복·형식 오류도 에러가 아니라 200 + available: false로 돌려준다.\n\n"
               + "에러: COMMON_004(nickname 파라미터 없음)\n\n"
               + "**현재는 가짜 응답 (항상 사용 가능)**")
+  // TODO: 빈 문자열·공백만 있는 닉네임도 에러가 아닌 available: false, reason: INVALID_LENGTH로
+  //  응답하고 테스트에 포함한다 (JECT-214)
   @GetMapping("/nickname-availability")
   public ApiResponse<NicknameAvailabilityResponse> checkNicknameAvailability(
       @Parameter(description = "확인할 닉네임 (URL 인코딩)") @RequestParam String nickname) {
