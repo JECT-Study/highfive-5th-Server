@@ -91,4 +91,42 @@ class ApiDocsTest {
         .andExpect(jsonPath("$.code").value("COMMON_004"))
         .andExpect(jsonPath("$.errors[0].field").value("types"));
   }
+
+  @Test
+  @DisplayName("약관 동의 목록에 null 항목이 있으면 COMMON 004다")
+  void termAgreementsWithNullItemIsInvalidInput() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/users/me/term-agreements")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"agreements\":[null]}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("COMMON_004"))
+        .andExpect(jsonPath("$.errors[0].field").value("agreements[0]"));
+  }
+
+  @Test
+  @DisplayName("약관 동의 항목의 필드도 검증한다")
+  void termAgreementItemFieldsAreValidated() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/users/me/term-agreements")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"agreements\":[{\"termId\":1}]}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("COMMON_004"))
+        .andExpect(jsonPath("$.errors[0].field").value("agreements[0].agreed"));
+  }
+
+  @Test
+  @DisplayName("올바른 약관 동의 요청은 성공한다")
+  void validTermAgreementsSucceed() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/users/me/term-agreements")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"agreements\":[{\"termId\":1,\"agreed\":true}]}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("COMMON_000"));
+  }
 }

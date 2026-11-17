@@ -8,7 +8,7 @@ import java.util.List;
 
 public record TermAgreementRequest(
     @Schema(description = "약관 목록 조회에서 받은 모든 약관의 동의 여부") @NotEmpty(message = "약관 동의 목록은 필수입니다.")
-        List<@Valid Agreement> agreements) {
+        List<@NotNull(message = "약관 동의 항목이 비어 있습니다.") @Valid Agreement> agreements) {
 
   public record Agreement(
       @NotNull(message = "약관 ID는 필수입니다.") Long termId,
