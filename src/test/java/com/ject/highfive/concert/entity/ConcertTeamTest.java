@@ -68,7 +68,8 @@ class ConcertTeamTest {
     ConcertTeam saved = concertTeamRepository.saveAndFlush(team(savedConcert(), 7L, 2));
     Long id = saved.getId();
     em.clear();
-    LocalDateTime firstJoinedAt = concertTeamRepository.findById(id).orElseThrow().getCreatedAt();
+    final LocalDateTime firstJoinedAt =
+        concertTeamRepository.findById(id).orElseThrow().getCreatedAt();
 
     concertTeamRepository.findById(id).orElseThrow().leave();
     em.flush();
