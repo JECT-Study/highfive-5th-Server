@@ -18,6 +18,7 @@ import java.time.LocalTime;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -128,6 +129,9 @@ public class Concert extends BaseTimeEntity {
 
   // 빠진 장르는 행이 지워지고(hard delete, 의사결정 D9) 새 장르는 추가된다
   public void changeGenres(Collection<Genre> requested) {
+    if (requested == null || requested.isEmpty() || requested.stream().anyMatch(Objects::isNull)) {
+      throw new IllegalArgumentException("공연 장르는 null 없이 하나 이상이어야 합니다.");
+    }
     Set<Genre> wanted = new HashSet<>(requested);
     genres.retainAll(wanted);
     genres.addAll(wanted);

@@ -7,6 +7,7 @@ import com.ject.highfive.concert.repository.ConcertRepository;
 import com.ject.highfive.support.MySqlRepositoryTest;
 import jakarta.persistence.PersistenceException;
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -109,5 +110,38 @@ class ConcertTest {
                     .setParameter(1, concert.getId())
                     .executeUpdate())
         .isInstanceOf(PersistenceException.class);
+  }
+
+  @Test
+  @DisplayName("장르가 null이거나 비어 있으면 생성·교체 모두 거부하고 기존 장르는 그대로다")
+  void emptyGenresRejected() {
+    assertThatThrownBy(() -> newConcert()).isInstanceOf(IllegalArgumentException.class);
+
+    Concert concert = newConcert(Genre.ROCK);
+    assertThatThrownBy(() -> concert.changeGenres(List.of()))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> concert.changeGenres(null))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThat(concert.getGenres()).containsExactly(Genre.ROCK);
+  }
+
+  @Test
+  @DisplayName("장르에 null 원소가 있으면 생성·교체 모두 거부하고 기존 장르는 그대로다")
+  void nullElementInGenresRejected() {
+    Concert concert = newConcert(Genre.ROCK);
+
+    assertThatThrownBy(() -> concert.changeGenres(Collections.singletonList(null)))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThat(concert.getGenres()).containsExactly(Genre.ROCK);
+    assertThatThrownBy(
+            () ->
+                Concert.builder()
+                    .hostBandId(3L)
+                    .createdBy(1L)
+                    .title("제목")
+                    .recruitTeamCount(3)
+                    .genres(Collections.singletonList(null))
+                    .build())
+        .isInstanceOf(IllegalArgumentException.class);
   }
 }
