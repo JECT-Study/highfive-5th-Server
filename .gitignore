@@ -37,6 +37,7 @@ out/
 .vscode/
 
 ### private ###
+.env
 docs/
 .claude/
 CLAUDE.local.md
