@@ -40,6 +40,27 @@ class GlobalExceptionHandlerTest {
   }
 
   @Test
+  @DisplayName("@ResponseStatus로 정한 201이 본문 status에도 그대로 실린다")
+  void responseStatusAnnotationIsReflectedInBody() throws Exception {
+    mockMvc
+        .perform(post("/test/created"))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.status").value(201))
+        .andExpect(jsonPath("$.code").value("COMMON_000"))
+        .andExpect(jsonPath("$.data.value").value("new"));
+  }
+
+  @Test
+  @DisplayName("ResponseEntity로 정한 HTTP 상태도 본문 status에 그대로 실린다")
+  void responseEntityStatusIsReflectedInBody() throws Exception {
+    mockMvc
+        .perform(post("/test/accepted"))
+        .andExpect(status().isAccepted())
+        .andExpect(jsonPath("$.status").value(202))
+        .andExpect(jsonPath("$.data").isEmpty());
+  }
+
+  @Test
   @DisplayName("결과가 없는 성공 응답의 data는 빈 객체다")
   void emptySuccessResponseHasEmptyData() throws Exception {
     mockMvc

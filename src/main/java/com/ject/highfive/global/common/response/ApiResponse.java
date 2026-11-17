@@ -8,6 +8,7 @@ import java.util.Map;
 // 모든 API의 공통 응답 형식.
 // 성공이면 data가, 입력값 검증 실패면 errors가 채워지고 나머지 실패는 둘 다 응답에서 빠진다.
 // (NON_NULL은 이 봉투에만 적용되고 data 안의 DTO 필드는 null이어도 그대로 내려간다)
+// status는 응답 직전에 ApiResponseStatusAdvice가 실제 HTTP 상태 코드로 맞춘다
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record ApiResponse<T>(
     int status, String code, String message, T data, List<FieldErrorResponse> errors) {
@@ -33,5 +34,12 @@ public record ApiResponse<T>(
   public static ApiResponse<Void> error(ErrorCode errorCode, List<FieldErrorResponse> errors) {
     return new ApiResponse<>(
         errorCode.getStatus().value(), errorCode.getCode(), errorCode.getMessage(), null, errors);
+  }
+
+  ApiResponse<T> withStatus(int status) {
+    if (this.status == status) {
+      return this;
+    }
+    return new ApiResponse<>(status, code, message, data, errors);
   }
 }

@@ -14,11 +14,13 @@ import java.util.Set;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 // GlobalExceptionHandlerTest에서만 쓰는 컨트롤러
@@ -48,6 +50,17 @@ class ExceptionTestController {
   @GetMapping("/success")
   ApiResponse<TestData> success() {
     return ApiResponse.success(new TestData(null));
+  }
+
+  @PostMapping("/created")
+  @ResponseStatus(HttpStatus.CREATED)
+  ApiResponse<TestData> created() {
+    return ApiResponse.success(new TestData("new"));
+  }
+
+  @PostMapping("/accepted")
+  ResponseEntity<ApiResponse<Map<String, Object>>> accepted() {
+    return ResponseEntity.status(HttpStatus.ACCEPTED).body(ApiResponse.success());
   }
 
   @GetMapping("/empty")
