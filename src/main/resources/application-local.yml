@@ -1,0 +1,19 @@
+# 로컬 개발용. 기본값은 compose.yaml로 띄운 MySQL·Redis에 맞춰져 있다
+# MySQL을 직접 설치했다면 루트의 .env에 자기 값만 적으면 된다 (.env.example 참고)
+spring:
+  config:
+    import: optional:file:.env[.properties]
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:${DB_PORT:3306}/highfive?serverTimezone=Asia/Seoul&characterEncoding=UTF-8}
+    username: ${DB_USERNAME:highfive}
+    password: ${DB_PASSWORD:highfive}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
