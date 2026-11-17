@@ -1,0 +1,31 @@
+# 로컬 개발용 MySQL·Redis. Spring은 IDE나 ./gradlew bootRun으로 따로 실행한다
+# 값은 루트의 .env에서 읽는다 (.env.example 참고). .env가 없으면 아래 기본값을 쓴다
+name: highfive
+
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: highfive
+      MYSQL_USER: ${DB_USERNAME:-highfive}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-highfive}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      TZ: Asia/Seoul
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "127.0.0.1:${DB_PORT:-3306}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+  redis:
+    image: redis:7
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+
+volumes:
+  mysql-data:
+  redis-data:

@@ -1,0 +1,13 @@
+# 테스트는 외부 DB 없이 H2 인메모리(MySQL 호환 모드)로 실행
+# main의 application.yml을 통째로 대신하므로 local 프로필·.env는 읽지 않는다
+spring:
+  application:
+    name: highfive
+  datasource:
+    url: jdbc:h2:mem:highfive;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: create-drop
