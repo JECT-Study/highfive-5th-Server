@@ -14,4 +14,6 @@ public interface RecruitPostRepository extends JpaRepository<RecruitPost, Long> 
   // 수정·마감·삭제가 동시에 오면 UPDATE가 옛 status·deleted_at을 다시 써서 서로를 덮어쓴다. 행을 잠가 차례로 처리한다
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   Optional<RecruitPost> findByIdAndDeletedAtIsNull(Long id);
+
+  Optional<RecruitPost> findByConcertIdAndDeletedAtIsNull(Long concertId);
 }

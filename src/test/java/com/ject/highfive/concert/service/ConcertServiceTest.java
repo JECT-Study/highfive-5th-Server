@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.ject.highfive.concert.dto.ConcertCreateRequest;
 import com.ject.highfive.concert.dto.ConcertCreateResponse;
+import com.ject.highfive.concert.dto.ConcertUpdateRequest;
 import com.ject.highfive.concert.entity.Concert;
 import com.ject.highfive.concert.entity.ConcertStatus;
 import com.ject.highfive.concert.entity.ConcertTeam;
@@ -18,9 +19,15 @@ import com.ject.highfive.concert.exception.ConcertErrorCode;
 import com.ject.highfive.concert.repository.ConcertRepository;
 import com.ject.highfive.concert.repository.ConcertTeamRepository;
 import com.ject.highfive.global.exception.BusinessException;
+import com.ject.highfive.recruit.entity.RecruitPost;
+import com.ject.highfive.recruit.entity.RecruitPostStatus;
+import com.ject.highfive.recruit.entity.TeamType;
+import com.ject.highfive.recruit.entity.WantedCareerLevel;
+import com.ject.highfive.recruit.repository.RecruitPostRepository;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,9 +46,13 @@ class ConcertServiceTest {
   private static final LocalDate PAST = LocalDate.of(2000, 1, 1);
   private static final LocalTime START = LocalTime.of(19, 0);
   private static final LocalTime END = LocalTime.of(21, 0);
+  private static final Long CONCERT_ID = 12L;
+  private static final Long VERSION = 3L;
+  private static final LocalDate DEADLINE = LocalDate.of(2999, 12, 10);
 
   @Mock ConcertRepository concertRepository;
   @Mock ConcertTeamRepository concertTeamRepository;
+  @Mock RecruitPostRepository recruitPostRepository;
   @InjectMocks ConcertService service;
 
   private ConcertCreateRequest request(LocalDate performDate, LocalTime start, LocalTime end) {
@@ -75,6 +86,95 @@ class ConcertServiceTest {
         .isInstanceOf(BusinessException.class)
         .extracting("errorCode")
         .isEqualTo(expected);
+  }
+
+  private Concert existingConcert(LocalDate performDate) {
+    Concert concert =
+        Concert.builder()
+            .hostBandId(BAND_ID)
+            .createdBy(1L)
+            .title("겨울 합동공연")
+            .recruitTeamCount(3)
+            .performDate(performDate)
+            .genres(List.of(Genre.ROCK))
+            .build();
+    ReflectionTestUtils.setField(concert, "id", CONCERT_ID);
+    ReflectionTestUtils.setField(concert, "version", VERSION);
+    given(concertRepository.findByIdAndDeletedAtIsNull(CONCERT_ID))
+        .willReturn(Optional.of(concert));
+    return concert;
+  }
+
+  private ConcertUpdateRequest updateRequest(
+      LocalDate performDate, LocalTime start, LocalTime end, int recruitTeamCount, Long version) {
+    return new ConcertUpdateRequest(
+        "봄 합동공연",
+        List.of(Genre.JAZZ),
+        recruitTeamCount,
+        performDate,
+        start,
+        end,
+        null,
+        null,
+        null,
+        null,
+        null,
+        version);
+  }
+
+  private ConcertUpdateRequest updateRequest(
+      LocalDate performDate, LocalTime start, LocalTime end, int recruitTeamCount) {
+    return updateRequest(performDate, start, end, recruitTeamCount, VERSION);
+  }
+
+  private ConcertUpdateRequest updateRequest(LocalDate performDate) {
+    return updateRequest(performDate, START, END, 3);
+  }
+
+  @Test
+  @DisplayName("다른 멤버가 먼저 수정해 버전이 다르면 CONCERT_012이고 공연은 그대로다")
+  void staleVersionRejected() {
+    Concert concert = existingConcert(FUTURE);
+    ConcertUpdateRequest stale = updateRequest(FUTURE, START, END, 3, VERSION - 1);
+
+    assertError(
+        () -> service.update(CONCERT_ID, USER_ID, stale),
+        ConcertErrorCode.CONCERT_MODIFIED_BY_OTHER);
+    assertThat(concert.getTitle()).isEqualTo("겨울 합동공연");
+    verifyNoInteractions(concertTeamRepository, recruitPostRepository);
+  }
+
+  @Test
+  @DisplayName("버전이 다르면 날짜 검사보다 먼저 CONCERT_012")
+  void versionCheckedBeforePerformDate() {
+    existingConcert(FUTURE);
+    ConcertUpdateRequest staleAndPast = updateRequest(PAST, START, END, 3, VERSION - 1);
+
+    assertError(
+        () -> service.update(CONCERT_ID, USER_ID, staleAndPast),
+        ConcertErrorCode.CONCERT_MODIFIED_BY_OTHER);
+  }
+
+  private RecruitPost givenRecruitPost(Concert concert, LocalDate deadline) {
+    RecruitPost post =
+        RecruitPost.builder()
+            .concert(concert)
+            .authorUserId(USER_ID)
+            .wantedCareerLevel(WantedCareerLevel.Y1_TO_3)
+            .teamTypes(List.of(TeamType.ANYONE))
+            .deadline(deadline)
+            .description("함께할 팀을 찾습니다.")
+            .build();
+    given(recruitPostRepository.findByConcertIdAndDeletedAtIsNull(CONCERT_ID))
+        .willReturn(Optional.of(post));
+    return post;
+  }
+
+  private void givenJoinedGuestTeams(long count) {
+    given(
+            concertTeamRepository.countByConcertIdAndStatusAndBandIdNot(
+                CONCERT_ID, ConcertTeamStatus.JOINED, BAND_ID))
+        .willReturn(count);
   }
 
   @Test
@@ -216,5 +316,149 @@ class ConcertServiceTest {
     assertError(
         () -> service.create(USER_ID, request(PAST, START, null)),
         ConcertErrorCode.PERFORM_TIME_INCOMPLETE);
+  }
+
+  @Test
+  @DisplayName("수정에 성공하면 요청 값으로 공연을 바꾸고 수정자를 기록한다")
+  void updateChangesConcert() {
+    Concert concert = existingConcert(FUTURE);
+
+    service.update(CONCERT_ID, USER_ID, updateRequest(LocalDate.of(2999, 11, 1), START, END, 5));
+
+    assertThat(concert.getTitle()).isEqualTo("봄 합동공연");
+    assertThat(concert.getGenres()).containsExactly(Genre.JAZZ);
+    assertThat(concert.getRecruitTeamCount()).isEqualTo(5);
+    assertThat(concert.getPerformDate()).isEqualTo(LocalDate.of(2999, 11, 1));
+    assertThat(concert.getUpdatedBy()).isEqualTo(USER_ID);
+    assertThat(concert.getCreatedBy()).isEqualTo(1L);
+  }
+
+  @Test
+  @DisplayName("공연이 없거나 삭제됐으면 CONCERT_001이고 다른 조회를 하지 않는다")
+  void updateMissingConcertRejected() {
+    assertError(
+        () -> service.update(CONCERT_ID, USER_ID, updateRequest(FUTURE)),
+        ConcertErrorCode.CONCERT_NOT_FOUND);
+    verifyNoInteractions(concertTeamRepository, recruitPostRepository);
+  }
+
+  @Test
+  @DisplayName("시작 시간만 있으면 공연을 찾기 전에 CONCERT_010")
+  void updateTimePairCheckedFirst() {
+    assertError(
+        () -> service.update(CONCERT_ID, USER_ID, updateRequest(FUTURE, START, null, 3)),
+        ConcertErrorCode.PERFORM_TIME_INCOMPLETE);
+    verifyNoInteractions(concertRepository, concertTeamRepository, recruitPostRepository);
+  }
+
+  @Test
+  @DisplayName("지난 공연도 날짜를 그대로 두면 다른 정보를 고칠 수 있다")
+  void unchangedPastDateAllowed() {
+    Concert concert = existingConcert(PAST);
+
+    service.update(CONCERT_ID, USER_ID, updateRequest(PAST));
+
+    assertThat(concert.getTitle()).isEqualTo("봄 합동공연");
+  }
+
+  @Test
+  @DisplayName("날짜를 과거로 바꾸면 CONCERT_002이고 공연은 그대로다")
+  void changedToPastRejected() {
+    Concert concert = existingConcert(FUTURE);
+
+    assertError(
+        () -> service.update(CONCERT_ID, USER_ID, updateRequest(PAST)),
+        ConcertErrorCode.PERFORM_DATE_BEFORE_TODAY);
+    assertThat(concert.getTitle()).isEqualTo("겨울 합동공연");
+    assertThat(concert.getPerformDate()).isEqualTo(FUTURE);
+  }
+
+  @Test
+  @DisplayName("미정이던 날짜를 과거로 정해도 바꾼 것이라 CONCERT_002")
+  void undecidedToPastRejected() {
+    existingConcert(null);
+
+    assertError(
+        () -> service.update(CONCERT_ID, USER_ID, updateRequest(PAST)),
+        ConcertErrorCode.PERFORM_DATE_BEFORE_TODAY);
+  }
+
+  @Test
+  @DisplayName("날짜를 미정으로 바꾸면 공고 마감일을 보지 않고 통과한다")
+  void changeToUndecidedSkipsDeadlineCheck() {
+    Concert concert = existingConcert(PAST);
+
+    service.update(CONCERT_ID, USER_ID, updateRequest(null, null, null, 3));
+
+    assertThat(concert.getPerformDate()).isNull();
+    verifyNoInteractions(recruitPostRepository);
+  }
+
+  @Test
+  @DisplayName("공연 날짜를 진행 중인 공고 마감일보다 앞으로 바꾸면 CONCERT_011")
+  void performDateBeforeDeadlineRejected() {
+    Concert concert = existingConcert(FUTURE);
+    givenRecruitPost(concert, DEADLINE);
+
+    assertError(
+        () -> service.update(CONCERT_ID, USER_ID, updateRequest(DEADLINE.minusDays(1))),
+        ConcertErrorCode.PERFORM_DATE_BEFORE_RECRUIT_DEADLINE);
+  }
+
+  @Test
+  @DisplayName("공연 날짜가 공고 마감일과 같은 날이면 통과한다")
+  void performDateOnDeadlineAllowed() {
+    Concert concert = existingConcert(FUTURE);
+    givenRecruitPost(concert, DEADLINE);
+
+    service.update(CONCERT_ID, USER_ID, updateRequest(DEADLINE));
+
+    assertThat(concert.getPerformDate()).isEqualTo(DEADLINE);
+  }
+
+  @Test
+  @DisplayName("공고가 이미 마감됐으면 마감일보다 앞으로 옮겨도 통과한다")
+  void closedRecruitPostSkipped() {
+    Concert concert = existingConcert(FUTURE);
+    RecruitPost post = givenRecruitPost(concert, DEADLINE);
+    ReflectionTestUtils.setField(post, "status", RecruitPostStatus.CLOSED);
+
+    service.update(CONCERT_ID, USER_ID, updateRequest(DEADLINE.minusDays(1)));
+
+    assertThat(concert.getPerformDate()).isEqualTo(DEADLINE.minusDays(1));
+  }
+
+  @Test
+  @DisplayName("공고가 없으면(삭제한 공고 포함) 마감일을 보지 않고 통과한다")
+  void noRecruitPostSkipped() {
+    Concert concert = existingConcert(FUTURE);
+
+    service.update(CONCERT_ID, USER_ID, updateRequest(DEADLINE.minusDays(1)));
+
+    verify(recruitPostRepository).findByConcertIdAndDeletedAtIsNull(CONCERT_ID);
+    assertThat(concert.getPerformDate()).isEqualTo(DEADLINE.minusDays(1));
+  }
+
+  @Test
+  @DisplayName("모집 팀 수를 주최 팀을 뺀 합류 팀 수보다 적게 줄이면 CONCERT_003")
+  void recruitTeamCountBelowJoinedRejected() {
+    Concert concert = existingConcert(FUTURE);
+    givenJoinedGuestTeams(3);
+
+    assertError(
+        () -> service.update(CONCERT_ID, USER_ID, updateRequest(FUTURE, START, END, 2)),
+        ConcertErrorCode.RECRUIT_TEAM_COUNT_BELOW_JOINED);
+    assertThat(concert.getRecruitTeamCount()).isEqualTo(3);
+  }
+
+  @Test
+  @DisplayName("모집 팀 수가 합류 팀 수와 같으면 통과한다")
+  void recruitTeamCountEqualToJoinedAllowed() {
+    Concert concert = existingConcert(FUTURE);
+    givenJoinedGuestTeams(3);
+
+    service.update(CONCERT_ID, USER_ID, updateRequest(FUTURE, START, END, 3));
+
+    assertThat(concert.getTitle()).isEqualTo("봄 합동공연");
   }
 }

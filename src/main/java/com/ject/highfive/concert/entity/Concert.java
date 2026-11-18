@@ -12,6 +12,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -46,6 +47,11 @@ public class Concert extends BaseTimeEntity {
 
   @Column(name = "updated_by", nullable = false)
   private Long updatedBy;
+
+  // 수정 화면을 연 뒤 다른 멤버가 먼저 고쳤는지 확인한다 (의사결정 D12). Hibernate가 수정마다 1씩 올린다
+  @Version
+  @Column(name = "version", nullable = false)
+  private Long version;
 
   @Column(name = "title", nullable = false, length = 100)
   private String title;
@@ -131,6 +137,35 @@ public class Concert extends BaseTimeEntity {
 
   public SortedSet<Genre> getGenres() {
     return Collections.unmodifiableSortedSet(genres);
+  }
+
+  // PUT 전체 교체(API 명세 Q5)라 선택 값이 null이면 미정으로 지운다.
+  // 장르를 먼저 바꿔, 장르가 거부되면 다른 필드도 바뀌지 않게 한다
+  public void update(
+      String title,
+      Collection<Genre> genres,
+      int recruitTeamCount,
+      LocalDate performDate,
+      LocalTime startTime,
+      LocalTime endTime,
+      String place,
+      String address,
+      String region,
+      Integer rentalFee,
+      String posterImageUrl,
+      Long updatedBy) {
+    changeGenres(genres);
+    this.title = title;
+    this.recruitTeamCount = recruitTeamCount;
+    this.performDate = performDate;
+    this.startTime = startTime;
+    this.endTime = endTime;
+    this.place = place;
+    this.address = address;
+    this.region = region;
+    this.rentalFee = rentalFee;
+    this.posterImageUrl = posterImageUrl;
+    this.updatedBy = updatedBy;
   }
 
   // 빠진 장르는 행이 지워지고(hard delete, 의사결정 D9) 새 장르는 추가된다
