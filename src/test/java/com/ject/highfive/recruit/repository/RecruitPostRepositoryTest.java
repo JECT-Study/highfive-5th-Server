@@ -135,15 +135,13 @@ class RecruitPostRepositoryTest {
   @Test
   @DisplayName("삭제하지 않은 공고만 findByConcertIdAndDeletedAtIsNull로 찾는다")
   void findByConcertIdAndDeletedAtIsNull() {
-    Concert withLivePost = savedConcert();
     Concert withDeletedPost = savedConcert();
-    RecruitPost livePost =
-        recruitPostRepository.saveAndFlush(newPost(withLivePost, TeamType.ANYONE));
-    RecruitPost deletedPost =
-        recruitPostRepository.saveAndFlush(newPost(withDeletedPost, TeamType.ANYONE));
-    deletedPost.delete();
+    recruitPostRepository.saveAndFlush(newPost(withDeletedPost, TeamType.ANYONE)).delete();
     em.flush();
     em.clear();
+    Concert withLivePost = savedConcert();
+    RecruitPost livePost =
+        recruitPostRepository.saveAndFlush(newPost(withLivePost, TeamType.ANYONE));
 
     assertThat(
             recruitPostRepository
