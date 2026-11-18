@@ -20,10 +20,13 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.SortNatural;
 
 @Getter
 @Entity
@@ -71,8 +74,9 @@ public class Concert extends BaseTimeEntity {
   @Column(name = "rental_fee")
   private Integer rentalFee;
 
-  @Column(name = "poster_file_id", length = 500)
-  private String posterFileId;
+  // 업로드 API가 돌려준 fileUrl (프로필 사진 profileImageUrl과 같은 방식)
+  @Column(name = "poster_image_url", length = 500)
+  private String posterImageUrl;
 
   @Column(name = "apply_url", length = 500)
   private String applyUrl;
@@ -81,12 +85,14 @@ public class Concert extends BaseTimeEntity {
   @Column(name = "status", nullable = false, length = 20)
   private ConcertStatus status;
 
+  // HashSet은 JVM마다 순서가 달라져 화면 순서가 흔들린다. enum 선언 순서로 정렬한다
   @Getter(AccessLevel.NONE)
   @ElementCollection
   @CollectionTable(name = "concert_genres", joinColumns = @JoinColumn(name = "concert_id"))
   @Enumerated(EnumType.STRING)
   @Column(name = "genre_code", nullable = false, length = 30)
-  private Set<Genre> genres = new HashSet<>();
+  @SortNatural
+  private SortedSet<Genre> genres = new TreeSet<>();
 
   @Column(name = "deleted_at")
   private LocalDateTime deletedAt;
@@ -104,7 +110,7 @@ public class Concert extends BaseTimeEntity {
       String place,
       String address,
       Integer rentalFee,
-      String posterFileId,
+      String posterImageUrl,
       Collection<Genre> genres) {
     this.hostBandId = hostBandId;
     this.createdBy = createdBy;
@@ -118,13 +124,13 @@ public class Concert extends BaseTimeEntity {
     this.place = place;
     this.address = address;
     this.rentalFee = rentalFee;
-    this.posterFileId = posterFileId;
+    this.posterImageUrl = posterImageUrl;
     this.status = ConcertStatus.PREPARING;
     changeGenres(genres);
   }
 
-  public Set<Genre> getGenres() {
-    return Collections.unmodifiableSet(genres);
+  public SortedSet<Genre> getGenres() {
+    return Collections.unmodifiableSortedSet(genres);
   }
 
   // 빠진 장르는 행이 지워지고(hard delete, 의사결정 D9) 새 장르는 추가된다

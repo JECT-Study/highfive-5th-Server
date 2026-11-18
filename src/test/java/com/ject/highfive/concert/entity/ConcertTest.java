@@ -144,4 +144,39 @@ class ConcertTest {
                     .build())
         .isInstanceOf(IllegalArgumentException.class);
   }
+
+  @Test
+  @DisplayName("DB에서 다시 읽어도 장르는 선언 순서로 나온다")
+  void genresReloadInDeclarationOrder() {
+    Concert saved = concertRepository.saveAndFlush(newConcert(Genre.ETC, Genre.ROCK, Genre.POP));
+    em.clear();
+
+    assertThat(concertRepository.findById(saved.getId()).orElseThrow().getGenres())
+        .containsExactly(Genre.ROCK, Genre.POP, Genre.ETC);
+  }
+
+  @Test
+  @DisplayName("포스터 주소는 poster_image_url 컬럼에 저장된다")
+  void posterImageUrlPersisted() {
+    Concert saved =
+        concertRepository.saveAndFlush(
+            Concert.builder()
+                .hostBandId(3L)
+                .createdBy(1L)
+                .title("겨울 합동공연")
+                .recruitTeamCount(3)
+                .posterImageUrl("https://cdn.example.com/posters/1.jpg")
+                .genres(List.of(Genre.ROCK))
+                .build());
+    em.clear();
+
+    assertThat(concertRepository.findById(saved.getId()).orElseThrow().getPosterImageUrl())
+        .isEqualTo("https://cdn.example.com/posters/1.jpg");
+    assertThat(
+            em.getEntityManager()
+                .createNativeQuery("select poster_image_url from concerts where id = ?")
+                .setParameter(1, saved.getId())
+                .getSingleResult())
+        .isEqualTo("https://cdn.example.com/posters/1.jpg");
+  }
 }
