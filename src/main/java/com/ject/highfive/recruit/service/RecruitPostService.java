@@ -11,7 +11,6 @@ import com.ject.highfive.recruit.exception.RecruitErrorCode;
 import com.ject.highfive.recruit.repository.RecruitPostRepository;
 import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,12 +44,7 @@ public class RecruitPostService {
             .deadline(request.deadline())
             .description(request.description())
             .build();
-    try {
-      return RecruitPostCreateResponse.from(recruitPostRepository.saveAndFlush(recruitPost));
-    } catch (DataIntegrityViolationException e) {
-      // 같은 공연에 동시에 작성한 경우 UNIQUE(concert_id)에 걸린다
-      throw new BusinessException(RecruitErrorCode.RECRUIT_POST_ALREADY_EXISTS);
-    }
+    return RecruitPostCreateResponse.from(recruitPostRepository.save(recruitPost));
   }
 
   private void validateDeadlineNotPast(LocalDate deadline) {

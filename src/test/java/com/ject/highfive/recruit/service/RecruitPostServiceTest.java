@@ -32,7 +32,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
@@ -73,7 +72,7 @@ class RecruitPostServiceTest {
 
   private void givenSaveAssignsId(Long id) {
     given(recruitPostRepository.existsByConcertId(CONCERT_ID)).willReturn(false);
-    given(recruitPostRepository.saveAndFlush(any(RecruitPost.class)))
+    given(recruitPostRepository.save(any(RecruitPost.class)))
         .willAnswer(
             invocation -> {
               RecruitPost post = invocation.getArgument(0);
@@ -100,7 +99,7 @@ class RecruitPostServiceTest {
 
     assertThat(response.recruitPostId()).isEqualTo(5L);
     ArgumentCaptor<RecruitPost> captor = ArgumentCaptor.forClass(RecruitPost.class);
-    verify(recruitPostRepository).saveAndFlush(captor.capture());
+    verify(recruitPostRepository).save(captor.capture());
     RecruitPost saved = captor.getValue();
     assertThat(saved.getConcert()).isSameAs(concert);
     assertThat(saved.getAuthorUserId()).isEqualTo(USER_ID);
@@ -127,7 +126,7 @@ class RecruitPostServiceTest {
     service.create(CONCERT_ID, USER_ID, request);
 
     ArgumentCaptor<RecruitPost> captor = ArgumentCaptor.forClass(RecruitPost.class);
-    verify(recruitPostRepository).saveAndFlush(captor.capture());
+    verify(recruitPostRepository).save(captor.capture());
     assertThat(captor.getValue().getTeamTypes()).containsExactly(TeamType.HOBBY, TeamType.ANYONE);
   }
 
@@ -204,19 +203,6 @@ class RecruitPostServiceTest {
     assertError(
         () -> service.create(CONCERT_ID, USER_ID, request(DEADLINE)),
         RecruitErrorCode.RECRUIT_POST_ALREADY_EXISTS);
-    verify(recruitPostRepository, never()).saveAndFlush(any());
-  }
-
-  @Test
-  @DisplayName("동시 요청으로 저장 중 UNIQUE 위반이 나도 RECRUIT_002")
-  void uniqueViolationOnSaveMapsToAlreadyExists() {
-    givenConcert(concert(PERFORM_DATE));
-    given(recruitPostRepository.existsByConcertId(CONCERT_ID)).willReturn(false);
-    given(recruitPostRepository.saveAndFlush(any(RecruitPost.class)))
-        .willThrow(new DataIntegrityViolationException("uk"));
-
-    assertError(
-        () -> service.create(CONCERT_ID, USER_ID, request(DEADLINE)),
-        RecruitErrorCode.RECRUIT_POST_ALREADY_EXISTS);
+    verify(recruitPostRepository, never()).save(any());
   }
 }
