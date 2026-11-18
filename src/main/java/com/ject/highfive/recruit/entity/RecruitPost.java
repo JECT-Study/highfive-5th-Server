@@ -71,7 +71,6 @@ public class RecruitPost extends BaseTimeEntity {
   @Column(name = "deadline", nullable = false)
   private LocalDate deadline;
 
-  // 값은 220의 delete()가 채운다
   @Column(name = "deleted_at")
   private LocalDateTime deletedAt;
 
@@ -101,7 +100,27 @@ public class RecruitPost extends BaseTimeEntity {
     return status == RecruitPostStatus.CLOSED || deadline.isBefore(today);
   }
 
-  // 빠진 유형은 행이 지워지고(hard delete, 의사결정 D9) 새 유형은 추가된다. 220의 update도 쓴다
+  // 팀 유형을 먼저 바꿔, 팀 유형이 거부되면 다른 필드도 바뀌지 않게 한다
+  public void update(
+      WantedCareerLevel wantedCareerLevel,
+      Collection<TeamType> teamTypes,
+      LocalDate deadline,
+      String description) {
+    changeTeamTypes(teamTypes);
+    this.wantedCareerLevel = wantedCareerLevel;
+    this.deadline = deadline;
+    this.description = description;
+  }
+
+  public void close() {
+    this.status = RecruitPostStatus.CLOSED;
+  }
+
+  public void delete() {
+    this.deletedAt = LocalDateTime.now();
+  }
+
+  // 빠진 유형은 행이 지워지고(hard delete, 의사결정 D9) 새 유형은 추가된다
   private void changeTeamTypes(Collection<TeamType> requested) {
     if (requested == null || requested.isEmpty() || requested.stream().anyMatch(Objects::isNull)) {
       throw new IllegalArgumentException("모집 팀 유형은 null 없이 하나 이상이어야 합니다.");
