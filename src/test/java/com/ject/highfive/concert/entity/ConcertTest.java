@@ -156,6 +156,30 @@ class ConcertTest {
   }
 
   @Test
+  @DisplayName("새 공연은 버전 0으로 저장되고, 수정하면 1 오른다")
+  void versionStartsAtZeroAndIncrementsOnUpdate() {
+    Concert concert = concertRepository.saveAndFlush(newConcert(Genre.ROCK));
+    assertThat(concert.getVersion()).isZero();
+
+    concert.update(
+        "봄 합동공연", List.of(Genre.ROCK), 3, null, null, null, null, null, null, null, null, 2L);
+    concertRepository.flush();
+
+    assertThat(concert.getVersion()).isEqualTo(1L);
+  }
+
+  @Test
+  @DisplayName("장르만 바꿔도 버전이 오른다")
+  void genreOnlyChangeIncrementsVersion() {
+    Concert concert = concertRepository.saveAndFlush(newConcert(Genre.ROCK));
+
+    concert.changeGenres(List.of(Genre.JAZZ));
+    concertRepository.flush();
+
+    assertThat(concert.getVersion()).isEqualTo(1L);
+  }
+
+  @Test
   @DisplayName("포스터 주소는 poster_image_url 컬럼에 저장된다")
   void posterImageUrlPersisted() {
     Concert saved =

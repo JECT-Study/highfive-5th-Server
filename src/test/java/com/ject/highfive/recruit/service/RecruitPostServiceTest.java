@@ -67,7 +67,8 @@ class RecruitPostServiceTest {
   }
 
   private void givenConcert(Concert concert) {
-    given(concertRepository.findById(CONCERT_ID)).willReturn(Optional.of(concert));
+    given(concertRepository.findByIdAndDeletedAtIsNull(CONCERT_ID))
+        .willReturn(Optional.of(concert));
   }
 
   private void givenSaveAssignsId(Long id) {
@@ -150,9 +151,9 @@ class RecruitPostServiceTest {
   }
 
   @Test
-  @DisplayName("공연이 없으면 CONCERT_001이고 저장하지 않는다")
+  @DisplayName("공연이 없거나 삭제됐으면 CONCERT_001이고 저장하지 않는다")
   void concertNotFound() {
-    given(concertRepository.findById(CONCERT_ID)).willReturn(Optional.empty());
+    given(concertRepository.findByIdAndDeletedAtIsNull(CONCERT_ID)).willReturn(Optional.empty());
 
     assertError(
         () -> service.create(CONCERT_ID, USER_ID, request(DEADLINE)),
