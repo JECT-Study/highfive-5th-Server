@@ -25,7 +25,6 @@ import com.ject.highfive.recruit.repository.RecruitPostRepository;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -63,7 +62,7 @@ class RecruitPostServiceTest {
   private RecruitPostRequest request(LocalDate deadline) {
     return new RecruitPostRequest(
         WantedCareerLevel.Y1_TO_3,
-        Set.of(TeamType.FIRST_PERFORMANCE, TeamType.ORIGINAL_SONGS),
+        List.of(TeamType.FIRST_PERFORMANCE, TeamType.ORIGINAL_SONGS),
         deadline,
         "12월 홍대에서 함께할 팀을 찾습니다.");
   }
@@ -111,6 +110,25 @@ class RecruitPostServiceTest {
         .containsExactly(TeamType.FIRST_PERFORMANCE, TeamType.ORIGINAL_SONGS);
     assertThat(saved.getDeadline()).isEqualTo(DEADLINE);
     assertThat(saved.getDescription()).isEqualTo("12월 홍대에서 함께할 팀을 찾습니다.");
+  }
+
+  @Test
+  @DisplayName("중복된 팀 유형은 하나로 합쳐 선언 순서대로 저장한다")
+  void duplicateTeamTypesAreDeduplicated() {
+    givenConcert(concert(PERFORM_DATE));
+    givenSaveAssignsId(5L);
+    RecruitPostRequest request =
+        new RecruitPostRequest(
+            WantedCareerLevel.Y1_TO_3,
+            List.of(TeamType.ANYONE, TeamType.ANYONE, TeamType.HOBBY),
+            DEADLINE,
+            "12월 홍대에서 함께할 팀을 찾습니다.");
+
+    service.create(CONCERT_ID, USER_ID, request);
+
+    ArgumentCaptor<RecruitPost> captor = ArgumentCaptor.forClass(RecruitPost.class);
+    verify(recruitPostRepository).saveAndFlush(captor.capture());
+    assertThat(captor.getValue().getTeamTypes()).containsExactly(TeamType.HOBBY, TeamType.ANYONE);
   }
 
   @Test

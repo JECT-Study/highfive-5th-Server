@@ -121,11 +121,12 @@ class RecruitPostControllerTest {
   }
 
   @Test
-  @DisplayName("팀 유형에 null 원소가 있으면 400 COMMON_001")
+  @DisplayName("팀 유형에 null 원소가 있으면 COMMON_004")
   void nullTeamTypeElementRejected() throws Exception {
     postRecruit(VALID_BODY.replace("\"FIRST_PERFORMANCE\"", "null"))
         .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.code").value("COMMON_001"));
+        .andExpect(jsonPath("$.code").value("COMMON_004"))
+        .andExpect(jsonPath("$.errors[0].field").value("teamTypes[0]"));
     verifyNoInteractions(recruitPostService);
   }
 

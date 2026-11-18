@@ -8,7 +8,7 @@ import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
-import java.util.Set;
+import java.util.List;
 
 // 2.1 작성, 2.2 수정(220) 공용. 마감일이 오늘 이전인지는 RECRUIT_003으로 돌려줘야 해서 서비스에서 본다
 public record RecruitPostRequest(
@@ -17,7 +17,7 @@ public record RecruitPostRequest(
         WantedCareerLevel wantedCareerLevel,
     @Schema(description = "이런 팀이면 좋아요 (중복은 하나로 합침)", example = "[\"FIRST_PERFORMANCE\"]")
         @NotEmpty(message = "모집 팀 유형을 하나 이상 골라 주세요.")
-        Set<@NotNull(message = "모집 팀 유형이 비어 있습니다.") TeamType> teamTypes,
+        List<@NotNull(message = "모집 팀 유형이 비어 있습니다.") TeamType> teamTypes,
     @Schema(description = "공고 마감일 (그날 23:59:59까지 모집)", example = "2026-12-01")
         @NotNull(message = "공고 마감일은 필수입니다.")
         LocalDate deadline,
