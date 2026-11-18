@@ -10,7 +10,7 @@ import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.Set;
+import java.util.List;
 
 // API 명세 1.1. 미정인 선택 값은 null. 시작·종료 시간 짝과 날짜는 오류 코드가 따로라 서비스에서 본다
 public record ConcertCreateRequest(
@@ -22,7 +22,7 @@ public record ConcertCreateRequest(
         String title,
     @Schema(description = "연주 장르 코드 (중복은 하나로 합침)", example = "[\"ROCK\", \"INDIE\"]")
         @NotEmpty(message = "연주 장르를 하나 이상 골라 주세요.")
-        Set<@NotNull(message = "연주 장르가 비어 있습니다.") Genre> genres,
+        List<@NotNull(message = "연주 장르가 비어 있습니다.") Genre> genres,
     @Schema(description = "모집할 팀 수 (주최 팀 제외)", example = "3")
         @NotNull(message = "모집 팀 수는 필수입니다.")
         @Min(value = 1, message = "모집 팀 수는 1 이상이어야 합니다.")

@@ -29,7 +29,8 @@ public class ConcertController {
       summary = "합동공연 생성",
       description =
           "밴드 대표자가 합동공연을 만든다. 요청한 밴드가 주최 팀(첫 참여 팀)이 된다.\n\n"
-              + "에러: COMMON_004(필수값·형식·길이), COMMON_001(목록에 없는 코드), "
+              + "에러: COMMON_004(필수값·길이·장르 null 원소), "
+              + "COMMON_001(JSON을 읽지 못함: 날짜·시간 형식, 숫자 범위, 목록에 없는 코드), "
               + "CONCERT_010(시작·종료 시간 중 하나만), CONCERT_002(공연 날짜가 오늘 이전)\n\n"
               + "**임시: `X-User-Id` 헤더 필수 (로그인 연동 전). 밴드 대표자 확인은 아직 하지 않는다**")
   @PostMapping

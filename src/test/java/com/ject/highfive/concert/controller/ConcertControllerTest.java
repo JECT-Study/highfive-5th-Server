@@ -145,7 +145,8 @@ class ConcertControllerTest {
   void nullGenreElementRejected() throws Exception {
     postConcert(bodyWith("genres", "[\"ROCK\", null]"))
         .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.code").value("COMMON_001"));
+        .andExpect(jsonPath("$.code").value("COMMON_004"))
+        .andExpect(jsonPath("$.errors[0].field").value("genres[1]"));
     verifyNoInteractions(concertService);
   }
 

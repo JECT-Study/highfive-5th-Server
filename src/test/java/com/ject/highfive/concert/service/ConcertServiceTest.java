@@ -20,7 +20,7 @@ import com.ject.highfive.concert.repository.ConcertTeamRepository;
 import com.ject.highfive.global.exception.BusinessException;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.Set;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -48,7 +48,7 @@ class ConcertServiceTest {
     return new ConcertCreateRequest(
         BAND_ID,
         "겨울 합동공연",
-        Set.of(Genre.ROCK, Genre.INDIE),
+        List.of(Genre.ROCK, Genre.INDIE),
         3,
         performDate,
         start,
@@ -115,6 +115,32 @@ class ConcertServiceTest {
   }
 
   @Test
+  @DisplayName("중복된 장르는 하나로 합쳐 저장한다")
+  void duplicateGenresCollapse() {
+    givenSaveAssignsId(12L);
+    ConcertCreateRequest request =
+        new ConcertCreateRequest(
+            BAND_ID,
+            "겨울 합동공연",
+            List.of(Genre.ROCK, Genre.INDIE, Genre.ROCK),
+            3,
+            FUTURE,
+            START,
+            END,
+            null,
+            null,
+            null,
+            null,
+            null);
+
+    service.create(USER_ID, request);
+
+    ArgumentCaptor<Concert> concertCaptor = ArgumentCaptor.forClass(Concert.class);
+    verify(concertRepository).save(concertCaptor.capture());
+    assertThat(concertCaptor.getValue().getGenres()).containsExactly(Genre.ROCK, Genre.INDIE);
+  }
+
+  @Test
   @DisplayName("선택 값이 모두 미정(null)이어도 만들 수 있다")
   void undecidedOptionalValuesAllowed() {
     givenSaveAssignsId(12L);
@@ -122,7 +148,7 @@ class ConcertServiceTest {
         new ConcertCreateRequest(
             BAND_ID,
             "겨울 합동공연",
-            Set.of(Genre.ROCK),
+            List.of(Genre.ROCK),
             3,
             null,
             null,
