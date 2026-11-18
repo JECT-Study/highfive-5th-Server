@@ -47,6 +47,7 @@ class ConcertServiceTest {
   private static final LocalTime START = LocalTime.of(19, 0);
   private static final LocalTime END = LocalTime.of(21, 0);
   private static final Long CONCERT_ID = 12L;
+  private static final Long VERSION = 3L;
   private static final LocalDate DEADLINE = LocalDate.of(2999, 12, 10);
 
   @Mock ConcertRepository concertRepository;
@@ -98,6 +99,7 @@ class ConcertServiceTest {
             .genres(List.of(Genre.ROCK))
             .build();
     ReflectionTestUtils.setField(concert, "id", CONCERT_ID);
+    ReflectionTestUtils.setField(concert, "version", VERSION);
     given(concertRepository.findByIdAndDeletedAtIsNull(CONCERT_ID))
         .willReturn(Optional.of(concert));
     return concert;
@@ -116,11 +118,62 @@ class ConcertServiceTest {
         null,
         null,
         null,
-        null);
+        null,
+        VERSION);
   }
 
   private ConcertUpdateRequest updateRequest(LocalDate performDate) {
     return updateRequest(performDate, START, END, 3);
+  }
+
+  @Test
+  @DisplayName("다른 멤버가 먼저 수정해 버전이 다르면 CONCERT_012이고 공연은 그대로다")
+  void staleVersionRejected() {
+    Concert concert = existingConcert(FUTURE);
+    ConcertUpdateRequest stale =
+        new ConcertUpdateRequest(
+            "봄 합동공연",
+            List.of(Genre.JAZZ),
+            3,
+            FUTURE,
+            START,
+            END,
+            null,
+            null,
+            null,
+            null,
+            null,
+            VERSION - 1);
+
+    assertError(
+        () -> service.update(CONCERT_ID, USER_ID, stale),
+        ConcertErrorCode.CONCERT_MODIFIED_BY_OTHER);
+    assertThat(concert.getTitle()).isEqualTo("겨울 합동공연");
+    verifyNoInteractions(concertTeamRepository, recruitPostRepository);
+  }
+
+  @Test
+  @DisplayName("버전이 다르면 날짜 검사보다 먼저 CONCERT_012")
+  void versionCheckedBeforePerformDate() {
+    existingConcert(FUTURE);
+    ConcertUpdateRequest staleAndPast =
+        new ConcertUpdateRequest(
+            "봄 합동공연",
+            List.of(Genre.JAZZ),
+            3,
+            PAST,
+            START,
+            END,
+            null,
+            null,
+            null,
+            null,
+            null,
+            VERSION - 1);
+
+    assertError(
+        () -> service.update(CONCERT_ID, USER_ID, staleAndPast),
+        ConcertErrorCode.CONCERT_MODIFIED_BY_OTHER);
   }
 
   private RecruitPost givenRecruitPost(Concert concert, LocalDate deadline) {

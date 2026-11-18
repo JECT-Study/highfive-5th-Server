@@ -19,7 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 // 생성 검사 순서: 시작·종료 시간 짝(400) → 공연 날짜(400) → 권한(나중에 403)
-// 수정 검사 순서: 시간 짝(400) → 공연 존재(404) → 권한(나중에 403) → 바꾼 날짜가 과거(400)
+// 수정 검사 순서: 시간 짝(400) → 공연 존재(404) → 권한(나중에 403) → 버전(409) → 바꾼 날짜가 과거(400)
 //   → 공고 마감일보다 이른 날짜(400) → 합류 팀 수(409)
 @Service
 @Transactional
@@ -55,6 +55,10 @@ public class ConcertService {
             .findByIdAndDeletedAtIsNull(concertId)
             .orElseThrow(() -> new BusinessException(ConcertErrorCode.CONCERT_NOT_FOUND));
     // TODO: JECT-248 #58 머지 후 이 공연의 참여 팀 멤버인지 확인한다 (403 AUTH_005)
+    // 수정 화면을 연 뒤 다른 멤버가 먼저 고쳤으면 옛 화면 값으로 덮어쓰지 않는다 (의사결정 D12)
+    if (!request.version().equals(concert.getVersion())) {
+      throw new BusinessException(ConcertErrorCode.CONCERT_MODIFIED_BY_OTHER);
+    }
     // PUT은 기존 날짜를 다시 보낸다. 바꿀 때만 막아야 지난 공연도 제목 오타 등을 고칠 수 있다
     if (!Objects.equals(request.performDate(), concert.getPerformDate())) {
       validatePerformDateNotPast(request.performDate());

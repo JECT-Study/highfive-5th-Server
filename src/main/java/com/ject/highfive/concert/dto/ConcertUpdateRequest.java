@@ -13,7 +13,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 
-// API 명세 1.3. ConcertCreateRequest에서 bandId만 뺀 같은 필드·검증이다.
+// API 명세 1.3. ConcertCreateRequest에서 bandId를 빼고 version을 더한 필드·검증이다.
 // 두 DTO가 어긋나지 않는지는 ConcertControllerTest가 같은 잘못된 값으로 생성·수정을 함께 확인한다
 public record ConcertUpdateRequest(
     @Schema(description = "공연 제목", example = "겨울 합동공연")
@@ -50,7 +50,10 @@ public record ConcertUpdateRequest(
         Integer rentalFee,
     @Schema(description = "업로드 URL 발급 API로 올린 이미지의 fileUrl", nullable = true)
         @Size(max = 500, message = "포스터 주소는 500자 이하여야 합니다.")
-        String posterImageUrl) {
+        String posterImageUrl,
+    @Schema(description = "수정 화면을 열 때 공연 조회(1.2)로 받은 version", example = "3")
+        @NotNull(message = "version은 필수입니다.")
+        Long version) {
 
   public void applyTo(Concert concert, Long userId) {
     concert.update(

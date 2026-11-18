@@ -12,6 +12,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -46,6 +47,11 @@ public class Concert extends BaseTimeEntity {
 
   @Column(name = "updated_by", nullable = false)
   private Long updatedBy;
+
+  // 수정 화면을 연 뒤 다른 멤버가 먼저 고쳤는지 확인한다 (의사결정 D12). Hibernate가 수정마다 1씩 올린다
+  @Version
+  @Column(name = "version", nullable = false)
+  private Long version;
 
   @Column(name = "title", nullable = false, length = 100)
   private String title;

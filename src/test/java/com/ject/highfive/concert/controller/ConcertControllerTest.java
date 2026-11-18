@@ -81,7 +81,9 @@ class ConcertControllerTest {
 
   // 유효한 수정 본문(bandId 없음)에서 한 필드만 바꾼다
   private static String updateBodyWith(String field, String rawValue) {
-    return toJson(commonFields(), field, rawValue);
+    Map<String, String> fields = commonFields();
+    fields.put("version", "3");
+    return toJson(fields, field, rawValue);
   }
 
   private ResultActions putConcert(String concertId, String body) throws Exception {
@@ -219,17 +221,28 @@ class ConcertControllerTest {
         ArgumentCaptor.forClass(ConcertUpdateRequest.class);
     verify(concertService).update(eq(12L), eq(7L), captor.capture());
     assertThat(captor.getValue().title()).isEqualTo("겨울 합동공연");
+    assertThat(captor.getValue().version()).isEqualTo(3L);
   }
 
   @Test
-  @DisplayName("수정 필수값이 모두 빠지면 COMMON_004와 세 필드의 오류를 돌려준다 (bandId는 받지 않음)")
+  @DisplayName("수정 필수값이 모두 빠지면 COMMON_004와 네 필드의 오류를 돌려준다 (bandId는 받지 않음)")
   void updateMissingRequiredFieldsReturnFieldErrors() throws Exception {
     putConcert("12", "{}")
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("COMMON_004"))
         .andExpect(
             jsonPath("$.errors[*].field")
-                .value(containsInAnyOrder("title", "genres", "recruitTeamCount")));
+                .value(containsInAnyOrder("title", "genres", "recruitTeamCount", "version")));
+    verifyNoInteractions(concertService);
+  }
+
+  @Test
+  @DisplayName("수정 요청에 version이 없으면 COMMON_004")
+  void updateWithoutVersionRejected() throws Exception {
+    putConcert("12", updateBodyWith("version", "null"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("COMMON_004"))
+        .andExpect(jsonPath("$.errors[0].field").value("version"));
     verifyNoInteractions(concertService);
   }
 
