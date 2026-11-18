@@ -38,4 +38,8 @@ public record RecruitPostRequest(
         .description(description)
         .build();
   }
+
+  public void applyTo(RecruitPost post) {
+    post.update(wantedCareerLevel, teamTypes, deadline, description);
+  }
 }
