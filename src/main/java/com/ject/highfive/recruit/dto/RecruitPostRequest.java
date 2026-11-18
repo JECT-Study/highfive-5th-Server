@@ -1,5 +1,7 @@
 package com.ject.highfive.recruit.dto;
 
+import com.ject.highfive.concert.entity.Concert;
+import com.ject.highfive.recruit.entity.RecruitPost;
 import com.ject.highfive.recruit.entity.TeamType;
 import com.ject.highfive.recruit.entity.WantedCareerLevel;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -24,4 +26,16 @@ public record RecruitPostRequest(
     @Schema(description = "공고 소개", example = "12월 홍대에서 함께할 팀을 찾습니다.")
         @NotBlank(message = "공고 소개는 필수입니다.")
         @Size(max = 500, message = "공고 소개는 500자 이하여야 합니다.")
-        String description) {}
+        String description) {
+
+  public RecruitPost toEntity(Concert concert, Long authorUserId) {
+    return RecruitPost.builder()
+        .concert(concert)
+        .authorUserId(authorUserId)
+        .wantedCareerLevel(wantedCareerLevel)
+        .teamTypes(teamTypes)
+        .deadline(deadline)
+        .description(description)
+        .build();
+  }
+}

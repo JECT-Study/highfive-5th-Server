@@ -36,15 +36,7 @@ public class RecruitPostService {
       throw new BusinessException(RecruitErrorCode.RECRUIT_POST_ALREADY_EXISTS);
     }
 
-    RecruitPost recruitPost =
-        RecruitPost.builder()
-            .concert(concert)
-            .authorUserId(userId)
-            .wantedCareerLevel(request.wantedCareerLevel())
-            .teamTypes(request.teamTypes())
-            .deadline(request.deadline())
-            .description(request.description())
-            .build();
+    RecruitPost recruitPost = request.toEntity(concert, userId);
     return RecruitPostCreateResponse.from(recruitPostRepository.save(recruitPost));
   }
 
