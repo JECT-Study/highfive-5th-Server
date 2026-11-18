@@ -14,7 +14,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// 검사 순서: 마감일이 오늘 이전(400) → 공연 존재(404) → 권한(나중에 403) → 지난 공연(400) → 공연 날짜보다 늦은 마감일(400) → 중복(409)
+// 작성 검사 순서: 마감일이 오늘 이전(400) → 공연 존재(404) → 권한(나중에 403) → 지난 공연(400)
+//   → 공연 날짜보다 늦은 마감일(400) → 중복(409)
+// 수정 검사 순서: 마감일이 오늘 이전(400) → 공고 존재(404) → 권한(나중에 403) → 이미 마감(409)
+//   → 공연 날짜보다 늦은 마감일(400)
+// 권한은 공고 → 공연 → hostBandId를 읽어야 알 수 있어 존재 확인 뒤에 둔다
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -38,6 +42,47 @@ public class RecruitPostService {
 
     RecruitPost recruitPost = request.toEntity(concert, userId);
     return RecruitPostCreateResponse.from(recruitPostRepository.save(recruitPost));
+  }
+
+  public void update(Long recruitPostId, Long userId, RecruitPostRequest request) {
+    validateDeadlineNotPast(request.deadline());
+    RecruitPost post = findPost(recruitPostId);
+    // TODO: JECT-248 #58 머지 후 post.getConcert().getHostBandId()의 현재 대표자인지 확인한다 (403 AUTH_005)
+    // 기한이 지난 공고의 마감일을 미래로 바꾸면 다시 열기가 되는데, 다시 여는 기능은 없다.
+    // 공연이 지난 공고도 마감일 ≤ 공연 날짜라 이미 마감이므로 여기서 걸린다
+    validateNotClosed(post);
+    validateDeadlineNotAfterPerformDate(request.deadline(), post.getConcert());
+
+    request.applyTo(post);
+  }
+
+  public void close(Long recruitPostId, Long userId) {
+    RecruitPost post = findPost(recruitPostId);
+    // TODO: JECT-248 #58 머지 후 post.getConcert().getHostBandId()의 현재 대표자인지 확인한다 (403 AUTH_005)
+    validateNotClosed(post);
+
+    post.close();
+  }
+
+  // 마감된 공고도 지울 수 있다
+  public void delete(Long recruitPostId, Long userId) {
+    RecruitPost post = findPost(recruitPostId);
+    // TODO: JECT-248 #58 머지 후 post.getConcert().getHostBandId()의 현재 대표자인지 확인한다 (403 AUTH_005)
+
+    post.delete();
+  }
+
+  private RecruitPost findPost(Long recruitPostId) {
+    return recruitPostRepository
+        .findByIdAndDeletedAtIsNull(recruitPostId)
+        .orElseThrow(() -> new BusinessException(RecruitErrorCode.RECRUIT_POST_NOT_FOUND));
+  }
+
+  // 직접 마감과 기한 마감을 모두 본다 (의사결정 D10)
+  private void validateNotClosed(RecruitPost post) {
+    if (post.isClosed(LocalDate.now())) {
+      throw new BusinessException(RecruitErrorCode.RECRUIT_POST_ALREADY_CLOSED);
+    }
   }
 
   private void validateDeadlineNotPast(LocalDate deadline) {

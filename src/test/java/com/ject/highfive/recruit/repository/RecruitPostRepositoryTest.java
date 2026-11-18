@@ -99,20 +99,49 @@ class RecruitPostRepositoryTest {
   }
 
   @Test
+  @DisplayName("팀 유형을 바꾸면 빠진 유형의 행은 지워지고 새 유형의 행이 생긴다")
+  void updateReplacesTeamTypeRows() {
+    RecruitPost post =
+        recruitPostRepository.saveAndFlush(
+            newPost(savedConcert(), TeamType.FIRST_PERFORMANCE, TeamType.HOBBY));
+
+    post.update(
+        WantedCareerLevel.ANY,
+        List.of(TeamType.HOBBY, TeamType.ANYONE),
+        LocalDate.of(2999, 12, 5),
+        "소개를 고쳤습니다.");
+    em.flush();
+    em.clear();
+
+    assertThat(teamTypeRows(post.getId())).containsExactly("ANYONE", "HOBBY");
+  }
+
+  @Test
+  @DisplayName("삭제한 공고는 findByIdAndDeletedAtIsNull로 찾을 수 없지만 existsByConcertId는 찾는다")
+  void deletedPostHiddenButStillBlocksNewPost() {
+    Concert concert = savedConcert();
+    RecruitPost deleted = recruitPostRepository.saveAndFlush(newPost(concert, TeamType.ANYONE));
+
+    deleted.delete();
+    em.flush();
+    em.clear();
+    RecruitPost live = recruitPostRepository.saveAndFlush(newPost(savedConcert(), TeamType.ANYONE));
+
+    assertThat(recruitPostRepository.findByIdAndDeletedAtIsNull(deleted.getId())).isEmpty();
+    assertThat(recruitPostRepository.findByIdAndDeletedAtIsNull(live.getId())).isPresent();
+    assertThat(recruitPostRepository.existsByConcertId(concert.getId())).isTrue();
+  }
+
+  @Test
   @DisplayName("삭제하지 않은 공고만 findByConcertIdAndDeletedAtIsNull로 찾는다")
   void findByConcertIdAndDeletedAtIsNull() {
-    Concert withLivePost = savedConcert();
     Concert withDeletedPost = savedConcert();
+    recruitPostRepository.saveAndFlush(newPost(withDeletedPost, TeamType.ANYONE)).delete();
+    em.flush();
+    em.clear();
+    Concert withLivePost = savedConcert();
     RecruitPost livePost =
         recruitPostRepository.saveAndFlush(newPost(withLivePost, TeamType.ANYONE));
-    RecruitPost deletedPost =
-        recruitPostRepository.saveAndFlush(newPost(withDeletedPost, TeamType.ANYONE));
-    // 공고 삭제(220)가 아직 없어 컬럼을 직접 채운다
-    em.getEntityManager()
-        .createNativeQuery("update recruit_posts set deleted_at = now() where id = ?")
-        .setParameter(1, deletedPost.getId())
-        .executeUpdate();
-    em.clear();
 
     assertThat(
             recruitPostRepository

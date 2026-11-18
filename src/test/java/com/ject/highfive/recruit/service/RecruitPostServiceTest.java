@@ -42,6 +42,8 @@ class RecruitPostServiceTest {
   private static final LocalDate PAST = LocalDate.of(2000, 1, 1);
   private static final Long CONCERT_ID = 12L;
   private static final Long USER_ID = 10L;
+  private static final Long POST_ID = 5L;
+  private static final LocalDate OPEN_DEADLINE = LocalDate.of(2999, 11, 1);
 
   @Mock RecruitPostRepository recruitPostRepository;
   @Mock ConcertRepository concertRepository;
@@ -87,6 +89,20 @@ class RecruitPostServiceTest {
         .isInstanceOf(BusinessException.class)
         .extracting("errorCode")
         .isEqualTo(expected);
+  }
+
+  private RecruitPost givenPost(LocalDate performDate, LocalDate deadline) {
+    RecruitPost post =
+        RecruitPost.builder()
+            .concert(concert(performDate))
+            .authorUserId(USER_ID)
+            .wantedCareerLevel(WantedCareerLevel.ANY)
+            .teamTypes(List.of(TeamType.ANYONE))
+            .deadline(deadline)
+            .description("기존 소개")
+            .build();
+    given(recruitPostRepository.findByIdAndDeletedAtIsNull(POST_ID)).willReturn(Optional.of(post));
+    return post;
   }
 
   @Test
@@ -237,5 +253,186 @@ class RecruitPostServiceTest {
         () -> service.create(CONCERT_ID, USER_ID, request(DEADLINE)),
         RecruitErrorCode.RECRUIT_POST_ALREADY_EXISTS);
     verify(recruitPostRepository, never()).save(any());
+  }
+
+  @Test
+  @DisplayName("수정하면 요청 값으로 공고를 통째로 바꾼다")
+  void updateReplacesPost() {
+    RecruitPost post = givenPost(PERFORM_DATE, OPEN_DEADLINE);
+
+    service.update(POST_ID, USER_ID, request(DEADLINE));
+
+    assertThat(post.getWantedCareerLevel()).isEqualTo(WantedCareerLevel.Y1_TO_3);
+    assertThat(post.getTeamTypes())
+        .containsExactly(TeamType.FIRST_PERFORMANCE, TeamType.ORIGINAL_SONGS);
+    assertThat(post.getDeadline()).isEqualTo(DEADLINE);
+    assertThat(post.getDescription()).isEqualTo("12월 홍대에서 함께할 팀을 찾습니다.");
+  }
+
+  @Test
+  @DisplayName("수정 마감일이 오늘 이전이면 공고를 찾기 전에 RECRUIT_003")
+  void updateDeadlineBeforeTodayRejected() {
+    assertError(
+        () -> service.update(POST_ID, USER_ID, request(PAST)),
+        RecruitErrorCode.DEADLINE_BEFORE_TODAY);
+    verifyNoInteractions(recruitPostRepository);
+  }
+
+  @Test
+  @DisplayName("수정 마감일을 오늘로 바꿀 수 있다")
+  void updateDeadlineTodayAllowed() {
+    RecruitPost post = givenPost(PERFORM_DATE, OPEN_DEADLINE);
+
+    service.update(POST_ID, USER_ID, request(LocalDate.now()));
+
+    assertThat(post.getDeadline()).isEqualTo(LocalDate.now());
+  }
+
+  @Test
+  @DisplayName("공고가 없거나 삭제됐으면 수정은 RECRUIT_001")
+  void updateMissingPostRejected() {
+    assertError(
+        () -> service.update(POST_ID, USER_ID, request(DEADLINE)),
+        RecruitErrorCode.RECRUIT_POST_NOT_FOUND);
+  }
+
+  @Test
+  @DisplayName("지난 공연의 공고는 이미 마감이라 수정하면 RECRUIT_004이고 공고는 그대로다")
+  void updatePastConcertPostRejectedAsClosed() {
+    RecruitPost post = givenPost(PAST, PAST);
+
+    assertError(
+        () -> service.update(POST_ID, USER_ID, request(DEADLINE)),
+        RecruitErrorCode.RECRUIT_POST_ALREADY_CLOSED);
+    assertThat(post.getDeadline()).isEqualTo(PAST);
+    assertThat(post.getDescription()).isEqualTo("기존 소개");
+  }
+
+  @Test
+  @DisplayName("공연이 오늘이면 공고를 수정할 수 있다")
+  void updateConcertTodayAllowed() {
+    RecruitPost post = givenPost(LocalDate.now(), OPEN_DEADLINE);
+
+    service.update(POST_ID, USER_ID, request(LocalDate.now()));
+
+    assertThat(post.getDeadline()).isEqualTo(LocalDate.now());
+  }
+
+  @Test
+  @DisplayName("수정 마감일이 공연 날짜보다 늦으면 RECRUIT_005")
+  void updateDeadlineAfterPerformDateRejected() {
+    givenPost(PERFORM_DATE, OPEN_DEADLINE);
+
+    assertError(
+        () -> service.update(POST_ID, USER_ID, request(PERFORM_DATE.plusDays(1))),
+        RecruitErrorCode.DEADLINE_AFTER_PERFORM_DATE);
+  }
+
+  @Test
+  @DisplayName("공연 날짜가 미정이면 수정 마감일을 공연 날짜와 비교하지 않는다")
+  void updateUndecidedPerformDateSkipsCheck() {
+    RecruitPost post = givenPost(null, OPEN_DEADLINE);
+
+    service.update(POST_ID, USER_ID, request(LocalDate.of(2999, 12, 31)));
+
+    assertThat(post.getDeadline()).isEqualTo(LocalDate.of(2999, 12, 31));
+  }
+
+  @Test
+  @DisplayName("직접 마감한 공고는 수정할 수 없다 (RECRUIT_004)")
+  void updateDirectlyClosedRejected() {
+    RecruitPost post = givenPost(PERFORM_DATE, OPEN_DEADLINE);
+    post.close();
+
+    assertError(
+        () -> service.update(POST_ID, USER_ID, request(DEADLINE)),
+        RecruitErrorCode.RECRUIT_POST_ALREADY_CLOSED);
+    assertThat(post.getDeadline()).isEqualTo(OPEN_DEADLINE);
+  }
+
+  @Test
+  @DisplayName("마감된 공고는 마감일이 공연 날짜보다 늦어도 RECRUIT_005가 아니라 RECRUIT_004")
+  void updateClosedCheckedBeforePerformDate() {
+    RecruitPost post = givenPost(PERFORM_DATE, OPEN_DEADLINE);
+    post.close();
+
+    assertError(
+        () -> service.update(POST_ID, USER_ID, request(PERFORM_DATE.plusDays(1))),
+        RecruitErrorCode.RECRUIT_POST_ALREADY_CLOSED);
+  }
+
+  @Test
+  @DisplayName("마감일이 지난 공고의 마감일을 미래로 바꾸는 수정은 다시 열기라 RECRUIT_004")
+  void updateDeadlinePassedRejected() {
+    RecruitPost post = givenPost(PERFORM_DATE, PAST);
+
+    assertError(
+        () -> service.update(POST_ID, USER_ID, request(DEADLINE)),
+        RecruitErrorCode.RECRUIT_POST_ALREADY_CLOSED);
+    assertThat(post.getDeadline()).isEqualTo(PAST);
+    assertThat(post.getDescription()).isEqualTo("기존 소개");
+  }
+
+  @Test
+  @DisplayName("마감하면 공고가 CLOSED가 된다")
+  void closeClosesPost() {
+    RecruitPost post = givenPost(PERFORM_DATE, OPEN_DEADLINE);
+
+    service.close(POST_ID, USER_ID);
+
+    assertThat(post.getStatus()).isEqualTo(RecruitPostStatus.CLOSED);
+  }
+
+  @Test
+  @DisplayName("이미 직접 마감한 공고를 다시 마감하면 RECRUIT_004")
+  void closeAlreadyClosedRejected() {
+    RecruitPost post = givenPost(PERFORM_DATE, OPEN_DEADLINE);
+    post.close();
+
+    assertError(
+        () -> service.close(POST_ID, USER_ID), RecruitErrorCode.RECRUIT_POST_ALREADY_CLOSED);
+  }
+
+  @Test
+  @DisplayName("마감일이 지난 공고를 마감하면 RECRUIT_004이고 status는 그대로다")
+  void closeDeadlinePassedRejected() {
+    RecruitPost post = givenPost(PERFORM_DATE, PAST);
+
+    assertError(
+        () -> service.close(POST_ID, USER_ID), RecruitErrorCode.RECRUIT_POST_ALREADY_CLOSED);
+    assertThat(post.getStatus()).isEqualTo(RecruitPostStatus.RECRUITING);
+  }
+
+  @Test
+  @DisplayName("공고가 없거나 삭제됐으면 마감은 RECRUIT_001")
+  void closeMissingPostRejected() {
+    assertError(() -> service.close(POST_ID, USER_ID), RecruitErrorCode.RECRUIT_POST_NOT_FOUND);
+  }
+
+  @Test
+  @DisplayName("삭제하면 삭제 시각이 기록된다")
+  void deleteMarksPostDeleted() {
+    RecruitPost post = givenPost(PERFORM_DATE, OPEN_DEADLINE);
+
+    service.delete(POST_ID, USER_ID);
+
+    assertThat(post.getDeletedAt()).isNotNull();
+  }
+
+  @Test
+  @DisplayName("마감된 공고도 삭제할 수 있다")
+  void deleteClosedPostAllowed() {
+    RecruitPost post = givenPost(PERFORM_DATE, PAST);
+    post.close();
+
+    service.delete(POST_ID, USER_ID);
+
+    assertThat(post.getDeletedAt()).isNotNull();
+  }
+
+  @Test
+  @DisplayName("공고가 없거나 이미 삭제됐으면 삭제는 RECRUIT_001")
+  void deleteMissingPostRejected() {
+    assertError(() -> service.delete(POST_ID, USER_ID), RecruitErrorCode.RECRUIT_POST_NOT_FOUND);
   }
 }

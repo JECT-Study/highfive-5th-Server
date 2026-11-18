@@ -108,4 +108,58 @@ class RecruitPostTest {
     assertThatThrownBy(() -> post.getTeamTypes().add(TeamType.HOBBY))
         .isInstanceOf(UnsupportedOperationException.class);
   }
+
+  @Test
+  @DisplayName("수정하면 네 필드를 통째로 바꾸고, 빠진 팀 유형은 지우고 새 유형을 넣는다")
+  void updateReplacesAllFields() {
+    RecruitPost post = post(TODAY, TeamType.FIRST_PERFORMANCE, TeamType.HOBBY);
+
+    post.update(
+        WantedCareerLevel.OVER_3Y,
+        List.of(TeamType.ANYONE, TeamType.HOBBY),
+        TODAY.plusDays(10),
+        "소개를 고쳤습니다.");
+
+    assertThat(post.getWantedCareerLevel()).isEqualTo(WantedCareerLevel.OVER_3Y);
+    assertThat(post.getTeamTypes()).containsExactly(TeamType.HOBBY, TeamType.ANYONE);
+    assertThat(post.getDeadline()).isEqualTo(TODAY.plusDays(10));
+    assertThat(post.getDescription()).isEqualTo("소개를 고쳤습니다.");
+    assertThat(post.getStatus()).isEqualTo(RecruitPostStatus.RECRUITING);
+  }
+
+  @Test
+  @DisplayName("팀 유형이 비어 있으면 수정을 거부하고 다른 필드도 바꾸지 않는다")
+  void invalidTeamTypesLeavePostUnchanged() {
+    RecruitPost post = post(TODAY, TeamType.ANYONE);
+
+    assertThatThrownBy(
+            () -> post.update(WantedCareerLevel.OVER_3Y, List.of(), TODAY.plusDays(10), "고침"))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThat(post.getWantedCareerLevel()).isEqualTo(WantedCareerLevel.Y1_TO_3);
+    assertThat(post.getDeadline()).isEqualTo(TODAY);
+    assertThat(post.getDescription()).isEqualTo("12월 홍대에서 함께할 팀을 찾습니다.");
+    assertThat(post.getTeamTypes()).containsExactly(TeamType.ANYONE);
+  }
+
+  @Test
+  @DisplayName("직접 마감하면 마감일이 남아 있어도 마감이다")
+  void closeMakesPostClosedRegardlessOfDeadline() {
+    RecruitPost post = post(TODAY.plusDays(30), TeamType.ANYONE);
+
+    post.close();
+
+    assertThat(post.getStatus()).isEqualTo(RecruitPostStatus.CLOSED);
+    assertThat(post.isClosed(TODAY)).isTrue();
+  }
+
+  @Test
+  @DisplayName("삭제하면 삭제 시각만 기록하고 상태는 그대로다")
+  void deleteRecordsDeletedAt() {
+    RecruitPost post = post(TODAY, TeamType.ANYONE);
+
+    post.delete();
+
+    assertThat(post.getDeletedAt()).isNotNull();
+    assertThat(post.getStatus()).isEqualTo(RecruitPostStatus.RECRUITING);
+  }
 }

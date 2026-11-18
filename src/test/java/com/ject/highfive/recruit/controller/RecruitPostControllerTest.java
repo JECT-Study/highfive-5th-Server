@@ -4,9 +4,12 @@ import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -30,6 +33,7 @@ import org.springframework.test.web.servlet.ResultActions;
 class RecruitPostControllerTest {
 
   private static final String URL = "/api/v1/concerts/12/recruit-posts";
+  private static final String POST_URL = "/api/v1/recruit-posts/5";
   private static final String VALID_BODY =
       """
       {
@@ -154,5 +158,95 @@ class RecruitPostControllerTest {
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.status").value(409))
         .andExpect(jsonPath("$.code").value("RECRUIT_002"));
+  }
+
+  private ResultActions putRecruit(String url, String body) throws Exception {
+    return mockMvc.perform(
+        put(url).header("X-User-Id", "7").contentType(MediaType.APPLICATION_JSON).content(body));
+  }
+
+  @Test
+  @DisplayName("수정에 성공하면 200과 빈 data를 돌려주고, 경로의 공고 ID와 헤더의 사용자 ID를 넘긴다")
+  void updateReturns200() throws Exception {
+    putRecruit(POST_URL, VALID_BODY)
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value(200))
+        .andExpect(jsonPath("$.code").value("COMMON_000"))
+        .andExpect(jsonPath("$.data").isMap())
+        .andExpect(jsonPath("$.data").isEmpty());
+    verify(recruitPostService).update(eq(5L), eq(7L), any());
+  }
+
+  @Test
+  @DisplayName("수정도 필수값이 모두 빠지면 COMMON_004와 네 필드의 오류를 돌려준다")
+  void updateMissingFieldsReturnFieldErrors() throws Exception {
+    putRecruit(POST_URL, "{}")
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("COMMON_004"))
+        .andExpect(
+            jsonPath("$.errors[*].field")
+                .value(
+                    containsInAnyOrder(
+                        "wantedCareerLevel", "teamTypes", "deadline", "description")));
+    verifyNoInteractions(recruitPostService);
+  }
+
+  @Test
+  @DisplayName("공고 ID가 숫자가 아니면 500이 아니라 400 COMMON_004")
+  void nonNumericRecruitPostIdIsBadRequest() throws Exception {
+    putRecruit("/api/v1/recruit-posts/abc", VALID_BODY)
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("COMMON_004"));
+    verifyNoInteractions(recruitPostService);
+  }
+
+  @Test
+  @DisplayName("마감에 성공하면 200과 빈 data를 돌려준다")
+  void closeReturns200() throws Exception {
+    mockMvc
+        .perform(post(POST_URL + "/close").header("X-User-Id", "7"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value(200))
+        .andExpect(jsonPath("$.data").isEmpty());
+    verify(recruitPostService).close(5L, 7L);
+  }
+
+  @Test
+  @DisplayName("이미 마감된 공고를 마감하면 409 RECRUIT_004가 그대로 내려간다")
+  void closeAlreadyClosedReturns409() throws Exception {
+    willThrow(new BusinessException(RecruitErrorCode.RECRUIT_POST_ALREADY_CLOSED))
+        .given(recruitPostService)
+        .close(5L, 7L);
+
+    mockMvc
+        .perform(post(POST_URL + "/close").header("X-User-Id", "7"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.status").value(409))
+        .andExpect(jsonPath("$.code").value("RECRUIT_004"));
+  }
+
+  @Test
+  @DisplayName("삭제에 성공하면 200과 빈 data를 돌려준다")
+  void deleteReturns200() throws Exception {
+    mockMvc
+        .perform(delete(POST_URL).header("X-User-Id", "7"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value(200))
+        .andExpect(jsonPath("$.data").isEmpty());
+    verify(recruitPostService).delete(5L, 7L);
+  }
+
+  @Test
+  @DisplayName("없는 공고를 삭제하면 404 RECRUIT_001이 그대로 내려간다")
+  void deleteMissingReturns404() throws Exception {
+    willThrow(new BusinessException(RecruitErrorCode.RECRUIT_POST_NOT_FOUND))
+        .given(recruitPostService)
+        .delete(5L, 7L);
+
+    mockMvc
+        .perform(delete(POST_URL).header("X-User-Id", "7"))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.status").value(404))
+        .andExpect(jsonPath("$.code").value("RECRUIT_001"));
   }
 }
