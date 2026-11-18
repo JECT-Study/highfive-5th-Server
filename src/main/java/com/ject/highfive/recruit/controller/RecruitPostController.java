@@ -89,7 +89,7 @@ public class RecruitPostController {
   @Operation(
       summary = "모집 공고 삭제",
       description =
-          "공고를 삭제한다. 마감된 공고도 지울 수 있다. 삭제한 공연에는 공고를 다시 작성할 수 없다.\n\n"
+          "공고를 삭제한다. 마감된 공고도 지울 수 있다. 공고를 지운 공연에는 다시 작성할 수 없다.\n\n"
               + "에러: RECRUIT_001(공고 없음, 이미 삭제 포함)\n\n"
               + "**임시: `X-User-Id` 헤더 필수 (로그인 연동 전). 주최 대표자 확인은 아직 하지 않는다**")
   @DeleteMapping("/recruit-posts/{recruitPostId}")
