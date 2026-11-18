@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.ject.highfive.concert.entity.Concert;
-import com.ject.highfive.concert.entity.Genre;
 import com.ject.highfive.concert.repository.ConcertRepository;
 import com.ject.highfive.global.exception.BusinessException;
 import com.ject.highfive.recruit.dto.RecruitPostRequest;
@@ -14,6 +13,7 @@ import com.ject.highfive.recruit.entity.TeamType;
 import com.ject.highfive.recruit.entity.WantedCareerLevel;
 import com.ject.highfive.recruit.exception.RecruitErrorCode;
 import com.ject.highfive.recruit.repository.RecruitPostRepository;
+import com.ject.highfive.support.ConcertFixture;
 import com.ject.highfive.support.MySqlContainerConfig;
 import java.time.LocalDate;
 import java.util.List;
@@ -48,16 +48,7 @@ class RecruitPostServiceConcurrencyTest {
   }
 
   private Long savedPostId() {
-    Concert concert =
-        concertRepository.saveAndFlush(
-            Concert.builder()
-                .hostBandId(3L)
-                .createdBy(1L)
-                .title("겨울 합동공연")
-                .recruitTeamCount(3)
-                .performDate(LocalDate.of(2999, 12, 20))
-                .genres(List.of(Genre.ROCK))
-                .build());
+    Concert concert = concertRepository.saveAndFlush(ConcertFixture.concert());
     return recruitPostRepository
         .saveAndFlush(
             RecruitPost.builder()
