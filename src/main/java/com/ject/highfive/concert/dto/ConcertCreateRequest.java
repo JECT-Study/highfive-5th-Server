@@ -1,5 +1,6 @@
 package com.ject.highfive.concert.dto;
 
+import com.ject.highfive.concert.entity.Concert;
 import com.ject.highfive.concert.entity.Genre;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Min;
@@ -47,4 +48,24 @@ public record ConcertCreateRequest(
         Integer rentalFee,
     @Schema(description = "업로드 URL 발급 API로 올린 이미지의 fileUrl", nullable = true)
         @Size(max = 500, message = "포스터 주소는 500자 이하여야 합니다.")
-        String posterImageUrl) {}
+        String posterImageUrl) {
+
+  // 요청 값을 그대로 옮겨 새 공연을 만든다. 주최 밴드는 bandId
+  public Concert toEntity(Long userId) {
+    return Concert.builder()
+        .hostBandId(bandId)
+        .createdBy(userId)
+        .title(title)
+        .recruitTeamCount(recruitTeamCount)
+        .performDate(performDate)
+        .startTime(startTime)
+        .endTime(endTime)
+        .place(place)
+        .address(address)
+        .region(region)
+        .rentalFee(rentalFee)
+        .posterImageUrl(posterImageUrl)
+        .genres(genres)
+        .build();
+  }
+}

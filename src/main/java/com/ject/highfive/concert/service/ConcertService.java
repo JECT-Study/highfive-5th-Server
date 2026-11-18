@@ -30,23 +30,7 @@ public class ConcertService {
     validatePerformDateNotPast(request.performDate());
     // TODO: JECT-248 #58 머지 후 요청한 bandId의 대표자인지, 밴드가 있는지 확인한다 (403 AUTH_005)
 
-    Concert concert =
-        concertRepository.save(
-            Concert.builder()
-                .hostBandId(request.bandId())
-                .createdBy(userId)
-                .title(request.title())
-                .recruitTeamCount(request.recruitTeamCount())
-                .performDate(request.performDate())
-                .startTime(request.startTime())
-                .endTime(request.endTime())
-                .place(request.place())
-                .address(request.address())
-                .region(request.region())
-                .rentalFee(request.rentalFee())
-                .posterImageUrl(request.posterImageUrl())
-                .genres(request.genres())
-                .build());
+    Concert concert = concertRepository.save(request.toEntity(userId));
     // 주최 밴드도 참여 팀이다. 공연만 생기고 주최 팀이 빠지지 않도록 같은 트랜잭션에서 저장한다
     concertTeamRepository.save(
         ConcertTeam.builder()
