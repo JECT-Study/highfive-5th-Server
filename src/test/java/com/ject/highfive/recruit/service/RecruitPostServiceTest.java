@@ -195,6 +195,38 @@ class RecruitPostServiceTest {
   }
 
   @Test
+  @DisplayName("이미 지난 공연이면 RECRUIT_006이고 저장하지 않는다")
+  void pastConcertRejected() {
+    givenConcert(concert(LocalDate.now().minusDays(1)));
+
+    assertError(
+        () -> service.create(CONCERT_ID, USER_ID, request(LocalDate.now())),
+        RecruitErrorCode.CONCERT_ALREADY_PERFORMED);
+    verifyNoInteractions(recruitPostRepository);
+  }
+
+  @Test
+  @DisplayName("공연 당일이고 마감일도 오늘이면 작성할 수 있다")
+  void concertTodayAllowed() {
+    givenConcert(concert(LocalDate.now()));
+    givenSaveAssignsId(5L);
+
+    assertThat(service.create(CONCERT_ID, USER_ID, request(LocalDate.now())).recruitPostId())
+        .isEqualTo(5L);
+  }
+
+  @Test
+  @DisplayName("지난 공연에 공연 날짜보다 늦은 마감일을 보내도 RECRUIT_006이 먼저다")
+  void pastConcertTakesPrecedenceOverDeadlineAfterPerformDate() {
+    givenConcert(concert(LocalDate.now().minusDays(1)));
+
+    assertError(
+        () -> service.create(CONCERT_ID, USER_ID, request(LocalDate.now().plusDays(5))),
+        RecruitErrorCode.CONCERT_ALREADY_PERFORMED);
+    verifyNoInteractions(recruitPostRepository);
+  }
+
+  @Test
   @DisplayName("이미 공고가 있는 공연(삭제한 공고 포함)이면 RECRUIT_002")
   void alreadyExists() {
     givenConcert(concert(PERFORM_DATE));

@@ -31,7 +31,7 @@ public class RecruitPostController {
       description =
           "공연의 모집 공고를 작성한다. 공연당 하나.\n\n"
               + "에러: COMMON_004(필수값·500자), COMMON_001(목록에 없는 코드), "
-              + "RECRUIT_003(마감일이 오늘 이전), CONCERT_001(공연 없음), "
+              + "RECRUIT_003(마감일이 오늘 이전), CONCERT_001(공연 없음), RECRUIT_006(이미 지난 공연), "
               + "RECRUIT_005(마감일이 공연 날짜보다 늦음), "
               + "RECRUIT_002(이미 공고가 있음, 삭제한 공고 포함)\n\n"
               + "**임시: `X-User-Id` 헤더 필수 (로그인 연동 전). 주최 대표자 확인은 아직 하지 않는다**")

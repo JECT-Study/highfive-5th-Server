@@ -14,7 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// 검사 순서: 마감일이 오늘 이전(400) → 공연 존재(404) → 권한(나중에 403) → 공연 날짜(400) → 중복(409)
+// 검사 순서: 마감일이 오늘 이전(400) → 공연 존재(404) → 권한(나중에 403) → 지난 공연(400) → 공연 날짜보다 늦은 마감일(400) → 중복(409)
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -30,6 +30,7 @@ public class RecruitPostService {
             .findById(concertId)
             .orElseThrow(() -> new BusinessException(ConcertErrorCode.CONCERT_NOT_FOUND));
     // TODO: JECT-248 #58 머지 후 concert.getHostBandId()의 현재 대표자인지 확인한다 (403 AUTH_005)
+    validateConcertNotPerformed(concert);
     validateDeadlineNotAfterPerformDate(request.deadline(), concert);
     if (recruitPostRepository.existsByConcertId(concertId)) {
       throw new BusinessException(RecruitErrorCode.RECRUIT_POST_ALREADY_EXISTS);
@@ -50,6 +51,14 @@ public class RecruitPostService {
   private void validateDeadlineNotPast(LocalDate deadline) {
     if (deadline.isBefore(LocalDate.now())) {
       throw new BusinessException(RecruitErrorCode.DEADLINE_BEFORE_TODAY);
+    }
+  }
+
+  // 공연 날짜가 미정이면 건너뛴다. 공연 당일은 허용
+  private void validateConcertNotPerformed(Concert concert) {
+    LocalDate performDate = concert.getPerformDate();
+    if (performDate != null && performDate.isBefore(LocalDate.now())) {
+      throw new BusinessException(RecruitErrorCode.CONCERT_ALREADY_PERFORMED);
     }
   }
 
