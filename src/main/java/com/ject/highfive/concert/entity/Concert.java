@@ -133,6 +133,35 @@ public class Concert extends BaseTimeEntity {
     return Collections.unmodifiableSortedSet(genres);
   }
 
+  // PUT 전체 교체(API 명세 Q5)라 선택 값이 null이면 미정으로 지운다.
+  // 장르를 먼저 바꿔, 장르가 거부되면 다른 필드도 바뀌지 않게 한다
+  public void update(
+      String title,
+      Collection<Genre> genres,
+      int recruitTeamCount,
+      LocalDate performDate,
+      LocalTime startTime,
+      LocalTime endTime,
+      String place,
+      String address,
+      String region,
+      Integer rentalFee,
+      String posterImageUrl,
+      Long updatedBy) {
+    changeGenres(genres);
+    this.title = title;
+    this.recruitTeamCount = recruitTeamCount;
+    this.performDate = performDate;
+    this.startTime = startTime;
+    this.endTime = endTime;
+    this.place = place;
+    this.address = address;
+    this.region = region;
+    this.rentalFee = rentalFee;
+    this.posterImageUrl = posterImageUrl;
+    this.updatedBy = updatedBy;
+  }
+
   // 빠진 장르는 행이 지워지고(hard delete, 의사결정 D9) 새 장르는 추가된다
   public void changeGenres(Collection<Genre> requested) {
     if (requested == null || requested.isEmpty() || requested.stream().anyMatch(Objects::isNull)) {
