@@ -14,6 +14,7 @@ import java.time.LocalTime;
 import java.util.List;
 
 // API 명세 1.1. 미정인 선택 값은 null. 시작·종료 시간 짝과 날짜는 오류 코드가 따로라 서비스에서 본다
+// 필드나 검증을 바꾸면 ConcertUpdateRequest도 같이 바꾼다
 public record ConcertCreateRequest(
     @Schema(description = "주최할 밴드 ID", example = "3") @NotNull(message = "주최 밴드는 필수입니다.")
         Long bandId,
