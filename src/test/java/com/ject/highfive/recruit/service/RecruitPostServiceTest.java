@@ -296,13 +296,13 @@ class RecruitPostServiceTest {
   }
 
   @Test
-  @DisplayName("지난 공연의 공고를 수정하면 마감·마감일 비교보다 먼저 RECRUIT_006이고 공고는 그대로다")
-  void updatePastConcertRejectedBeforeOtherChecks() {
+  @DisplayName("지난 공연의 공고는 이미 마감이라 수정하면 RECRUIT_004이고 공고는 그대로다")
+  void updatePastConcertPostRejectedAsClosed() {
     RecruitPost post = givenPost(PAST, PAST);
 
     assertError(
         () -> service.update(POST_ID, USER_ID, request(DEADLINE)),
-        RecruitErrorCode.CONCERT_ALREADY_PERFORMED);
+        RecruitErrorCode.RECRUIT_POST_ALREADY_CLOSED);
     assertThat(post.getDeadline()).isEqualTo(PAST);
     assertThat(post.getDescription()).isEqualTo("기존 소개");
   }
@@ -347,6 +347,17 @@ class RecruitPostServiceTest {
         () -> service.update(POST_ID, USER_ID, request(DEADLINE)),
         RecruitErrorCode.RECRUIT_POST_ALREADY_CLOSED);
     assertThat(post.getDeadline()).isEqualTo(OPEN_DEADLINE);
+  }
+
+  @Test
+  @DisplayName("마감된 공고는 마감일이 공연 날짜보다 늦어도 RECRUIT_005가 아니라 RECRUIT_004")
+  void updateClosedCheckedBeforePerformDate() {
+    RecruitPost post = givenPost(PERFORM_DATE, OPEN_DEADLINE);
+    post.close();
+
+    assertError(
+        () -> service.update(POST_ID, USER_ID, request(PERFORM_DATE.plusDays(1))),
+        RecruitErrorCode.RECRUIT_POST_ALREADY_CLOSED);
   }
 
   @Test

@@ -56,8 +56,8 @@ public class RecruitPostController {
           "공고 내용을 전체 교체(PUT)한다. 본문은 작성과 같다.\n\n"
               + "에러: COMMON_004(필수값·500자, 숫자가 아닌 공고 ID), COMMON_001(목록에 없는 코드), "
               + "RECRUIT_003(마감일이 오늘 이전), RECRUIT_001(공고 없음, 삭제 포함), "
-              + "RECRUIT_006(이미 지난 공연), RECRUIT_005(마감일이 공연 날짜보다 늦음), "
-              + "RECRUIT_004(이미 마감된 공고: 직접 마감, 마감일 지남 모두)\n\n"
+              + "RECRUIT_004(이미 마감된 공고: 직접 마감, 마감일 지남 모두), "
+              + "RECRUIT_005(마감일이 공연 날짜보다 늦음)\n\n"
               + "**임시: `X-User-Id` 헤더 필수 (로그인 연동 전). 주최 대표자 확인은 아직 하지 않는다**")
   @PutMapping("/recruit-posts/{recruitPostId}")
   public ApiResponse<Map<String, Object>> update(
