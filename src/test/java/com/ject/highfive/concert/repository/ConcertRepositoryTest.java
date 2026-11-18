@@ -3,10 +3,8 @@ package com.ject.highfive.concert.repository;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.ject.highfive.concert.entity.Concert;
-import com.ject.highfive.concert.entity.Genre;
+import com.ject.highfive.support.ConcertFixture;
 import com.ject.highfive.support.MySqlRepositoryTest;
-import java.time.LocalDate;
-import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,15 +17,7 @@ class ConcertRepositoryTest {
   @Autowired TestEntityManager em;
 
   private Concert savedConcert() {
-    return concertRepository.saveAndFlush(
-        Concert.builder()
-            .hostBandId(3L)
-            .createdBy(1L)
-            .title("겨울 합동공연")
-            .recruitTeamCount(3)
-            .performDate(LocalDate.of(2999, 12, 20))
-            .genres(List.of(Genre.ROCK))
-            .build());
+    return concertRepository.saveAndFlush(ConcertFixture.concert());
   }
 
   // 공연 삭제 메서드가 아직 없어 컬럼을 직접 채운다
