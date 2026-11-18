@@ -30,7 +30,7 @@ public class RecruitPostService {
         concertRepository
             .findById(concertId)
             .orElseThrow(() -> new BusinessException(ConcertErrorCode.CONCERT_NOT_FOUND));
-    // TODO(JECT-248): #58 머지 후 concert.getHostBandId()의 현재 대표자인지 확인한다 (403 AUTH_005)
+    // TODO: JECT-248 #58 머지 후 concert.getHostBandId()의 현재 대표자인지 확인한다 (403 AUTH_005)
     validateDeadlineNotAfterPerformDate(request.deadline(), concert);
     if (recruitPostRepository.existsByConcertId(concertId)) {
       throw new BusinessException(RecruitErrorCode.RECRUIT_POST_ALREADY_EXISTS);
