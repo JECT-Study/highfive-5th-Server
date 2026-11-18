@@ -106,7 +106,7 @@ class ConcertServiceTest {
   }
 
   private ConcertUpdateRequest updateRequest(
-      LocalDate performDate, LocalTime start, LocalTime end, int recruitTeamCount) {
+      LocalDate performDate, LocalTime start, LocalTime end, int recruitTeamCount, Long version) {
     return new ConcertUpdateRequest(
         "봄 합동공연",
         List.of(Genre.JAZZ),
@@ -119,7 +119,12 @@ class ConcertServiceTest {
         null,
         null,
         null,
-        VERSION);
+        version);
+  }
+
+  private ConcertUpdateRequest updateRequest(
+      LocalDate performDate, LocalTime start, LocalTime end, int recruitTeamCount) {
+    return updateRequest(performDate, start, end, recruitTeamCount, VERSION);
   }
 
   private ConcertUpdateRequest updateRequest(LocalDate performDate) {
@@ -130,20 +135,7 @@ class ConcertServiceTest {
   @DisplayName("다른 멤버가 먼저 수정해 버전이 다르면 CONCERT_012이고 공연은 그대로다")
   void staleVersionRejected() {
     Concert concert = existingConcert(FUTURE);
-    ConcertUpdateRequest stale =
-        new ConcertUpdateRequest(
-            "봄 합동공연",
-            List.of(Genre.JAZZ),
-            3,
-            FUTURE,
-            START,
-            END,
-            null,
-            null,
-            null,
-            null,
-            null,
-            VERSION - 1);
+    ConcertUpdateRequest stale = updateRequest(FUTURE, START, END, 3, VERSION - 1);
 
     assertError(
         () -> service.update(CONCERT_ID, USER_ID, stale),
@@ -156,20 +148,7 @@ class ConcertServiceTest {
   @DisplayName("버전이 다르면 날짜 검사보다 먼저 CONCERT_012")
   void versionCheckedBeforePerformDate() {
     existingConcert(FUTURE);
-    ConcertUpdateRequest staleAndPast =
-        new ConcertUpdateRequest(
-            "봄 합동공연",
-            List.of(Genre.JAZZ),
-            3,
-            PAST,
-            START,
-            END,
-            null,
-            null,
-            null,
-            null,
-            null,
-            VERSION - 1);
+    ConcertUpdateRequest staleAndPast = updateRequest(PAST, START, END, 3, VERSION - 1);
 
     assertError(
         () -> service.update(CONCERT_ID, USER_ID, staleAndPast),
