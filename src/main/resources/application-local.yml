@@ -17,3 +17,7 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
+# JWT_SECRET이 없으면 로컬 전용 키를 쓴다. dev·운영 서버에서는 반드시 환경변수로 따로 지정한다
+jwt:
+  secret: ${JWT_SECRET:aGlnaGZpdmUtbG9jYWwtZGV2LW9ubHktand0LXNlY3JldC1kby1ub3QtdXNlLWluLWRldi1vci1wcm9k}

@@ -3,8 +3,10 @@ package com.ject.highfive;
 import java.util.TimeZone;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration;
 
-@SpringBootApplication
+// 로그인은 JWT로만 하므로 Boot가 만드는 기본 사용자(generated security password)는 쓰지 않는다
+@SpringBootApplication(exclude = UserDetailsServiceAutoConfiguration.class)
 public class HighFiveApplication {
 
   public static void main(String[] args) {
