@@ -33,7 +33,8 @@ class RefreshTokenRepositoryTest {
     refreshTokenRepository.save(7L, "first", TTL);
     refreshTokenRepository.save(7L, "second", TTL);
 
-    assertThat(redisTemplate.opsForValue().get(KEY)).isEqualTo("second");
+    assertThat(redisTemplate.opsForValue().get(KEY))
+        .isEqualTo(RefreshTokenRepository.hash("second"));
     assertThat(redisTemplate.getExpire(KEY)).isPositive().isLessThanOrEqualTo(TTL.toSeconds());
   }
 
@@ -45,7 +46,7 @@ class RefreshTokenRepositoryTest {
     boolean rotated = refreshTokenRepository.rotate(7L, "old", "new", TTL);
 
     assertThat(rotated).isTrue();
-    assertThat(redisTemplate.opsForValue().get(KEY)).isEqualTo("new");
+    assertThat(redisTemplate.opsForValue().get(KEY)).isEqualTo(RefreshTokenRepository.hash("new"));
     assertThat(redisTemplate.getExpire(KEY)).isGreaterThan(Duration.ofMinutes(1).toSeconds());
   }
 
@@ -57,7 +58,8 @@ class RefreshTokenRepositoryTest {
 
     refreshTokenRepository.save(7L, "current", TTL);
     assertThat(refreshTokenRepository.rotate(7L, "old", "new", TTL)).isFalse();
-    assertThat(redisTemplate.opsForValue().get(KEY)).isEqualTo("current");
+    assertThat(redisTemplate.opsForValue().get(KEY))
+        .isEqualTo(RefreshTokenRepository.hash("current"));
   }
 
   @Test
@@ -67,7 +69,7 @@ class RefreshTokenRepositoryTest {
 
     assertThat(refreshTokenRepository.rotate(7L, "old", "new1", TTL)).isTrue();
     assertThat(refreshTokenRepository.rotate(7L, "old", "new2", TTL)).isFalse();
-    assertThat(redisTemplate.opsForValue().get(KEY)).isEqualTo("new1");
+    assertThat(redisTemplate.opsForValue().get(KEY)).isEqualTo(RefreshTokenRepository.hash("new1"));
   }
 
   @Test
@@ -78,5 +80,14 @@ class RefreshTokenRepositoryTest {
     refreshTokenRepository.deleteByUserId(7L);
 
     assertThat(redisTemplate.hasKey(KEY)).isFalse();
+  }
+
+  @Test
+  @DisplayName("원문이 아니라 SHA-256 해시를 저장한다")
+  void storesHashNotRawToken() {
+    refreshTokenRepository.save(7L, "raw-refresh-token", TTL);
+
+    String stored = redisTemplate.opsForValue().get(KEY);
+    assertThat(stored).isNotEqualTo("raw-refresh-token").hasSize(64).matches("[0-9a-f]+");
   }
 }
