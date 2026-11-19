@@ -53,9 +53,24 @@ DB_PASSWORD=내_비밀번호
 | --- | --- |
 | `application.yml` | 공통 설정. 접속 정보는 환경변수로 받는다 |
 | `application-local.yml` | 로컬 개발용 (기본 프로필) |
-| `src/test/resources/application.yml` | 테스트용. H2 인메모리 DB를 써서 MySQL 없이 돌아간다 |
+| `src/test/resources/application.yml` | 테스트용. 기본은 H2 인메모리 DB, MySQL 전용 쿼리를 검사하는 리포지토리 테스트는 Testcontainers로 MySQL을 띄운다 |
 
 비밀값은 레포에 커밋하지 않습니다. 로컬 값은 `.env`에 두고, 새 변수를 추가하면 `.env.example`에도 이름을 적어 주세요.
+
+테스트에 Testcontainers가 포함돼 있어서 `./gradlew check`를 돌릴 때는 Docker가 켜져 있어야 합니다.
+
+## 배포 (dev 서버)
+
+dev 서버(EC2)는 GitHub Actions → ECR → CodeDeploy로 배포합니다. 배포 워크플로는 AWS 구성 후에 추가합니다.
+
+| 파일 | 용도 |
+| --- | --- |
+| `Dockerfile` | 배포 이미지. `docker build -t highfive-api .`로 로컬에서도 빌드할 수 있다 |
+| `deploy/compose.yaml` | dev 서버에서 앱·MySQL·Redis를 띄운다 |
+| `deploy/appspec.yml`, `deploy/scripts/` | CodeDeploy가 실행하는 배포·헬스 체크 스크립트 |
+| `deploy/.env.example` | dev 서버의 `/home/ubuntu/config/.env`에 둘 변수 목록 |
+
+헬스 체크는 `/actuator/health`를 씁니다.
 
 ## PR 전에
 
