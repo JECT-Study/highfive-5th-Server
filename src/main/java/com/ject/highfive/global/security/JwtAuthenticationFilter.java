@@ -50,7 +50,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
   }
 
   private String extractToken(String header) {
-    if (!header.startsWith(BEARER_PREFIX)) {
+    // 인증 스킴 이름은 대소문자를 구분하지 않는다 (RFC 9110)
+    if (!header.regionMatches(true, 0, BEARER_PREFIX, 0, BEARER_PREFIX.length())) {
       throw new BusinessException(AuthErrorCode.INVALID_TOKEN);
     }
     String token = header.substring(BEARER_PREFIX.length()).trim();

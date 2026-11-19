@@ -188,4 +188,14 @@ class GlobalExceptionHandlerTest {
         .andExpect(jsonPath("$.code").value("COMMON_005"))
         .andExpect(content().string(Matchers.not(Matchers.containsString("내부 정보"))));
   }
+
+  @Test
+  @DisplayName("컨트롤러 안에서 난 AccessDeniedException은 500이 아니라 403 AUTH_005")
+  void accessDeniedIsForbidden() throws Exception {
+    mockMvc
+        .perform(get("/test/access-denied"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.status").value(403))
+        .andExpect(jsonPath("$.code").value("AUTH_005"));
+  }
 }

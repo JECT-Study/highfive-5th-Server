@@ -10,6 +10,7 @@ import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.ObjectError;
 import org.springframework.validation.method.ParameterErrors;
@@ -103,6 +104,13 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(errorCode.getStatus())
         .headers(e.getHeaders())
         .body(ApiResponse.error(errorCode));
+  }
+
+  // 역할 권한은 서비스에서 BusinessException(AUTH_005)으로 확인하는 것이 원칙이지만,
+  // @PreAuthorize 등으로 Security 예외가 컨트롤러 안에서 나와도 500이 아닌 403으로 응답한다
+  @ExceptionHandler(AccessDeniedException.class)
+  public ResponseEntity<ApiResponse<Void>> handleAccessDenied(AccessDeniedException e) {
+    return toResponse(AuthErrorCode.FORBIDDEN);
   }
 
   @ExceptionHandler(Exception.class)
