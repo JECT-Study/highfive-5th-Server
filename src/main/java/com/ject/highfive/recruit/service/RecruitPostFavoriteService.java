@@ -9,7 +9,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// 찜·해제는 SQL 한 줄로 끝내고 공고 행을 잠그지 않는다. 겹치는 요청은 찜 행의 UNIQUE가 정리한다 (스펙 4.4)
+// 찜·해제는 SQL 한 줄로 끝내고 공고 행을 배타 잠금하지 않는다. 찜 INSERT는 FK 검사로 공고 행에 공유 잠금만 걸어
+// 찜끼리는 막히지 않는다(공고 수정·마감·삭제는 진행 중인 찜 INSERT가 커밋될 때까지 기다린다).
+// 겹치는 같은 찜은 UNIQUE가 정리한다 (스펙 4.4)
 @Service
 @Transactional
 @RequiredArgsConstructor
