@@ -6,11 +6,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.ject.highfive.global.security.jwt.JwtTokenProvider;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -19,6 +21,11 @@ import org.springframework.test.web.servlet.MockMvc;
 class ApiDocsTest {
 
   @Autowired private MockMvc mockMvc;
+  @Autowired private JwtTokenProvider jwtTokenProvider;
+
+  private String bearerToken() {
+    return "Bearer " + jwtTokenProvider.createAccessToken(1L);
+  }
 
   @Test
   @DisplayName("Swagger 문서에 온보딩 API가 노출된다")
@@ -55,7 +62,10 @@ class ApiDocsTest {
   @DisplayName("코드 목록은 요청한 종류만 돌려준다")
   void codesReturnOnlyRequestedTypes() throws Exception {
     mockMvc
-        .perform(get("/api/v1/codes").param("types", "GENRE"))
+        .perform(
+            get("/api/v1/codes")
+                .header(HttpHeaders.AUTHORIZATION, bearerToken())
+                .param("types", "GENRE"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data.GENRE[0].code").value("ROCK"))
         .andExpect(jsonPath("$.data.POSITION").doesNotExist());
@@ -76,7 +86,10 @@ class ApiDocsTest {
   @DisplayName("코드 종류를 비워 보내면 COMMON 004다")
   void codesWithEmptyTypesIsInvalidInput() throws Exception {
     mockMvc
-        .perform(get("/api/v1/codes").param("types", ""))
+        .perform(
+            get("/api/v1/codes")
+                .header(HttpHeaders.AUTHORIZATION, bearerToken())
+                .param("types", ""))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("COMMON_004"))
         .andExpect(jsonPath("$.errors[0].field").value("types"));
@@ -86,7 +99,10 @@ class ApiDocsTest {
   @DisplayName("코드 종류에 빈 항목이 섞여 있으면 COMMON 004다")
   void codesWithBlankTypeIsInvalidInput() throws Exception {
     mockMvc
-        .perform(get("/api/v1/codes").param("types", "GENRE,"))
+        .perform(
+            get("/api/v1/codes")
+                .header(HttpHeaders.AUTHORIZATION, bearerToken())
+                .param("types", "GENRE,"))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("COMMON_004"))
         .andExpect(jsonPath("$.errors[0].field").value("types"));
@@ -98,6 +114,7 @@ class ApiDocsTest {
     mockMvc
         .perform(
             post("/api/v1/users/me/term-agreements")
+                .header(HttpHeaders.AUTHORIZATION, bearerToken())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"agreements\":[null]}"))
         .andExpect(status().isBadRequest())
@@ -111,6 +128,7 @@ class ApiDocsTest {
     mockMvc
         .perform(
             post("/api/v1/users/me/term-agreements")
+                .header(HttpHeaders.AUTHORIZATION, bearerToken())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"agreements\":[{\"termId\":1}]}"))
         .andExpect(status().isBadRequest())
@@ -124,6 +142,7 @@ class ApiDocsTest {
     mockMvc
         .perform(
             post("/api/v1/users/me/term-agreements")
+                .header(HttpHeaders.AUTHORIZATION, bearerToken())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"agreements\":[{\"termId\":1,\"agreed\":true}]}"))
         .andExpect(status().isOk())
