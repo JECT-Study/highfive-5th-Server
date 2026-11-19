@@ -14,6 +14,7 @@ import org.hamcrest.Matchers;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
@@ -21,6 +22,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(controllers = ExceptionTestController.class)
 @Import(SecurityConfig.class)
+// 예외 처리 응답만 확인하므로 로그인(Security 필터)은 건너뛴다. 401 응답은 SecurityTest에서 확인한다
+@AutoConfigureMockMvc(addFilters = false)
 class GlobalExceptionHandlerTest {
 
   @Autowired private MockMvc mockMvc;
@@ -184,5 +187,15 @@ class GlobalExceptionHandlerTest {
         .andExpect(status().isInternalServerError())
         .andExpect(jsonPath("$.code").value("COMMON_005"))
         .andExpect(content().string(Matchers.not(Matchers.containsString("내부 정보"))));
+  }
+
+  @Test
+  @DisplayName("컨트롤러 안에서 난 AccessDeniedException은 500이 아니라 403 AUTH_005")
+  void accessDeniedIsForbidden() throws Exception {
+    mockMvc
+        .perform(get("/test/access-denied"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.status").value(403))
+        .andExpect(jsonPath("$.code").value("AUTH_005"));
   }
 }

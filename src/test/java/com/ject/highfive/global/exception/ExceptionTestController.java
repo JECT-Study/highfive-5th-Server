@@ -15,6 +15,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -87,6 +88,11 @@ class ExceptionTestController {
   @GetMapping("/business")
   ApiResponse<Void> business() {
     throw new BusinessException(TestErrorCode.CONFLICT);
+  }
+
+  @GetMapping("/access-denied")
+  ApiResponse<Void> accessDenied() {
+    throw new AccessDeniedException("@PreAuthorize 거부");
   }
 
   @GetMapping("/unexpected")

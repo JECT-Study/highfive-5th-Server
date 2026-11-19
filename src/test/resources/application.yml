@@ -11,3 +11,9 @@ spring:
     open-in-view: false
     hibernate:
       ddl-auto: create-drop
+
+# 테스트 전용 JWT 서명 키 (main의 application.yml을 대신하므로 만료 시간도 함께 둔다)
+jwt:
+  secret: aGlnaGZpdmUtdGVzdC1vbmx5LWp3dC1zZWNyZXQta2V5LWZvci11bml0LWFuZC1pbnRlZ3JhdGlvbg==
+  access-token-expiry: 30m
+  refresh-token-expiry: 14d

@@ -21,6 +21,7 @@ import com.ject.highfive.recruit.service.RecruitPostService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
@@ -30,6 +31,8 @@ import org.springframework.test.web.servlet.ResultActions;
 
 @WebMvcTest(controllers = RecruitPostController.class)
 @Import(SecurityConfig.class)
+// TODO: JECT-249 로그인 사용자로 바꾸면 필터를 켜고 토큰으로 호출한다 (지금은 X-User-Id 헤더로 받음)
+@AutoConfigureMockMvc(addFilters = false)
 class RecruitPostControllerTest {
 
   private static final String URL = "/api/v1/concerts/12/recruit-posts";
