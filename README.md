@@ -64,4 +64,4 @@ DB_PASSWORD=내_비밀번호
 ./gradlew check           # 포맷 검사 + Checkstyle + 테스트
 ```
 
-`./gradlew check`가 통과해야 PR을 올릴 수 있습니다.
+`./gradlew check`가 통과해야 PR을 올릴 수 있습니다. PR을 올리면 GitHub Actions(`.github/workflows/ci.yml`)가 같은 검사를 다시 돌립니다. 실패하면 Actions 탭의 `reports` 아티팩트에서 Checkstyle·테스트 리포트를 볼 수 있습니다.
