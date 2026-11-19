@@ -16,4 +16,7 @@ public interface RecruitPostRepository extends JpaRepository<RecruitPost, Long> 
   Optional<RecruitPost> findByIdAndDeletedAtIsNull(Long id);
 
   Optional<RecruitPost> findByConcertIdAndDeletedAtIsNull(Long concertId);
+
+  // 찜은 공고가 있는지만 본다. 잠그면 같은 공고의 모든 찜과 수정·마감·삭제가 줄을 선다 (222 스펙 4.4)
+  boolean existsByIdAndDeletedAtIsNull(Long id);
 }

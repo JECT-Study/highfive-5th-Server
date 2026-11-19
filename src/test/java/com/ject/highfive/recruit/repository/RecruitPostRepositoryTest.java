@@ -154,4 +154,21 @@ class RecruitPostRepositoryTest {
     assertThat(recruitPostRepository.findByConcertIdAndDeletedAtIsNull(withoutPost.getId()))
         .isEmpty();
   }
+
+  @Test
+  @DisplayName("existsByIdAndDeletedAtIsNull은 마감된 공고는 참, 삭제된 공고와 없는 공고는 거짓")
+  void existsByIdAndDeletedAtIsNull() {
+    RecruitPost closed =
+        recruitPostRepository.saveAndFlush(newPost(savedConcert(), TeamType.ANYONE));
+    closed.close();
+    RecruitPost deleted =
+        recruitPostRepository.saveAndFlush(newPost(savedConcert(), TeamType.ANYONE));
+    deleted.delete();
+    em.flush();
+    em.clear();
+
+    assertThat(recruitPostRepository.existsByIdAndDeletedAtIsNull(closed.getId())).isTrue();
+    assertThat(recruitPostRepository.existsByIdAndDeletedAtIsNull(deleted.getId())).isFalse();
+    assertThat(recruitPostRepository.existsByIdAndDeletedAtIsNull(Long.MAX_VALUE)).isFalse();
+  }
 }
