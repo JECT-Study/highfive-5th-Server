@@ -1,0 +1,18 @@
+# 이미지 빌드에 필요한 것: gradlew, gradle/, settings.gradle, build.gradle, src/
+.git
+.github
+.gradle
+build
+deploy
+config
+.idea
+.vscode
+*.iml
+.env
+.env.*
+.claude
+.ai
+docs
+CLAUDE.local.md
+compose.yaml
+README.md
