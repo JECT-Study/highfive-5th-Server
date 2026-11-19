@@ -1,5 +1,19 @@
 # 모든 환경 공통 설정. 접속 정보는 환경변수로만 받는다 (비밀값은 레포에 커밋하지 않음)
 # 프로필을 지정하지 않으면 local로 실행된다. dev 서버는 SPRING_PROFILES_ACTIVE=dev
+server:
+  # dev 서버는 Nginx 뒤에서 돈다. X-Forwarded-* 헤더로 원래 주소·https 여부를 인식한다
+  forward-headers-strategy: native
+
+# 웹으로는 health만 연다 (배포 헬스 체크용). DB·Redis 상태 같은 상세 정보는 응답에 넣지 않는다
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
 spring:
   application:
     name: highfive
