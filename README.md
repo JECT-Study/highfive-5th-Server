@@ -3,7 +3,7 @@
 아마추어 밴드들이 합동 공연을 함께 준비하는 앱 highfive의 백엔드입니다.
 
 - Java 17, Spring Boot 4.1.2, Gradle
-- MySQL 8.0, Redis 7
+- MySQL 8.4, Redis 7
 
 ## 로컬 실행
 
@@ -21,7 +21,7 @@ docker compose up -d
 
 **MySQL을 직접 설치한 경우**
 
-MySQL 8.0, Redis 7로 버전을 맞추고, DB를 먼저 만듭니다.
+MySQL 8.4, Redis 7로 버전을 맞추고, DB를 먼저 만듭니다.
 
 ```sql
 CREATE DATABASE highfive CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
