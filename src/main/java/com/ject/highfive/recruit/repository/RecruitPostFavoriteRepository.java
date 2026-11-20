@@ -2,6 +2,8 @@ package com.ject.highfive.recruit.repository;
 
 import com.ject.highfive.recruit.entity.RecruitPostFavorite;
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.Set;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -31,4 +33,11 @@ public interface RecruitPostFavoriteRepository extends JpaRepository<RecruitPost
           + " where f.userId = :userId and f.recruitPost.id = :recruitPostId")
   void deleteByUserIdAndRecruitPostId(
       @Param("userId") Long userId, @Param("recruitPostId") Long recruitPostId);
+
+  // 공고 목록(2.5)의 찜 여부. 넘긴 공고 중 사용자가 찜한 것만 돌려준다
+  @Query(
+      "select f.recruitPost.id from RecruitPostFavorite f"
+          + " where f.userId = :userId and f.recruitPost.id in :recruitPostIds")
+  Set<Long> findRecruitPostIdsByUserId(
+      @Param("userId") Long userId, @Param("recruitPostIds") Collection<Long> recruitPostIds);
 }

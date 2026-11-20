@@ -136,4 +136,21 @@ class RecruitPostFavoriteRepositoryTest {
     assertThat(rows).hasSize(1);
     assertThat(rows.get(0)[1]).isEqualTo(LATER);
   }
+
+  @Test
+  @DisplayName("사용자가 찜한 공고 ID만, 넘긴 공고 ID 안에서 돌려준다")
+  void findRecruitPostIdsByUserId() {
+    RecruitPost favorited = savedPost();
+    RecruitPost otherUsers = savedPost();
+    RecruitPost outOfList = savedPost();
+    favoriteRepository.saveAndFlush(favorite(USER_ID, favorited));
+    favoriteRepository.saveAndFlush(favorite(OTHER_USER_ID, otherUsers));
+    favoriteRepository.saveAndFlush(favorite(USER_ID, outOfList));
+    RecruitPost notFavorited = savedPost();
+
+    assertThat(
+            favoriteRepository.findRecruitPostIdsByUserId(
+                USER_ID, List.of(favorited.getId(), notFavorited.getId(), otherUsers.getId())))
+        .containsExactly(favorited.getId());
+  }
 }
