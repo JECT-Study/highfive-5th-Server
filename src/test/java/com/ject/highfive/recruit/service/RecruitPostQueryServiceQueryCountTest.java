@@ -12,11 +12,10 @@ import com.ject.highfive.recruit.dto.RecruitPostSearchRequest;
 import com.ject.highfive.recruit.dto.RecruitPostSummaryResponse;
 import com.ject.highfive.recruit.entity.RecruitPost;
 import com.ject.highfive.recruit.entity.RecruitPostFavorite;
-import com.ject.highfive.recruit.entity.TeamType;
-import com.ject.highfive.recruit.entity.WantedCareerLevel;
 import com.ject.highfive.recruit.repository.RecruitPostFavoriteRepository;
 import com.ject.highfive.recruit.repository.RecruitPostRepository;
 import com.ject.highfive.support.MySqlContainerConfig;
+import com.ject.highfive.support.RecruitPostFixture;
 import jakarta.persistence.EntityManagerFactory;
 import java.time.LocalDate;
 import java.util.List;
@@ -74,15 +73,7 @@ class RecruitPostQueryServiceQueryCountTest {
       concertTeamRepository.saveAndFlush(
           ConcertTeam.builder().concert(concert).bandId(100L + i).build());
       RecruitPost post =
-          recruitPostRepository.saveAndFlush(
-              RecruitPost.builder()
-                  .concert(concert)
-                  .authorUserId(10L)
-                  .wantedCareerLevel(WantedCareerLevel.ANY)
-                  .teamTypes(List.of(TeamType.ANYONE))
-                  .deadline(LocalDate.of(2999, 12, 1))
-                  .description("소개")
-                  .build());
+          recruitPostRepository.saveAndFlush(RecruitPostFixture.recruitPost(concert));
       favoriteRepository.saveAndFlush(
           RecruitPostFavorite.builder().userId(USER_ID).recruitPost(post).build());
     }
