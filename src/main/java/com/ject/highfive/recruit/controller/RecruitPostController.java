@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Size;
 import java.util.List;
 import java.util.Map;
@@ -50,8 +51,9 @@ public class RecruitPostController {
               + "- region: 하나. genre·careerLevel: 여러 개(같은 이름 반복). 장르는 하나라도 맞으면 포함\n"
               + "- careerLevel로 거르면 무관(ANY) 공고는 항상 포함\n"
               + "- keyword: 공연 제목·공고 소개에서 찾음, 최대 50자\n"
-              + "- page는 1부터(1보다 작으면 1), size 기본 10·최대 100(넘으면 100)\n\n"
-              + "에러: COMMON_004(목록에 없는 코드, 50자 넘는 키워드, 숫자가 아닌 page·size)\n\n"
+              + "- page는 1부터(1보다 작으면 1)·최대 10000, size 기본 10·최대 100(넘으면 100)\n\n"
+              + "에러: COMMON_004(목록에 없는 genre·careerLevel 코드, 50자 넘는 키워드, "
+              + "10000 넘는 page, 숫자가 아닌 page·size)\n\n"
               + "**임시: `X-User-Id` 헤더 필수 (로그인 연동 전). isMine은 아직 항상 false**")
   @GetMapping("/recruit-posts")
   public ApiResponse<PageResponse<RecruitPostSummaryResponse>> search(
@@ -64,7 +66,11 @@ public class RecruitPostController {
           @RequestParam(required = false)
           @Size(max = 50, message = "검색어는 50자 이하여야 합니다.")
           String keyword,
-      @Parameter(description = "페이지(1부터)") @RequestParam(defaultValue = "1") int page,
+      // offset((page-1)*size)이 int를 넘으면 Spring Data가 예외를 던져 500이 나므로 상한을 둔다
+      @Parameter(description = "페이지(1부터, 최대 10000)")
+          @RequestParam(defaultValue = "1")
+          @Max(value = 10000, message = "페이지는 10000 이하여야 합니다.")
+          int page,
       @Parameter(description = "페이지 크기(최대 100)") @RequestParam(defaultValue = "10") int size,
       // TODO: JECT-249 로그인 연동(JECT-211) 후 로그인 사용자로 바꾼다
       @Parameter(description = "임시: 로그인 연동 전 사용자 ID", example = "1") @RequestHeader("X-User-Id")

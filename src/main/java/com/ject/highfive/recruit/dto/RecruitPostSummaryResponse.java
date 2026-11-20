@@ -10,7 +10,6 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 
-// 공고 목록(2.5) 카드 한 장. Figma 1380:7687
 public record RecruitPostSummaryResponse(
     Long recruitPostId,
     Long concertId,

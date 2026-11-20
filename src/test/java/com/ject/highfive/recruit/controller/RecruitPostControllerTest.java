@@ -361,6 +361,17 @@ class RecruitPostControllerTest {
   }
 
   @Test
+  @DisplayName("page가 10000을 넘으면 400 COMMON_004. 10000까지는 받는다")
+  void searchTooLargePageRejected() throws Exception {
+    getList("?page=10001")
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("COMMON_004"));
+    verifyNoInteractions(recruitPostQueryService);
+
+    getList("?page=10000").andExpect(status().isOk());
+  }
+
+  @Test
   @DisplayName("숫자가 아닌 page는 400 COMMON_004")
   void searchNonNumericPageRejected() throws Exception {
     getList("?page=abc")
