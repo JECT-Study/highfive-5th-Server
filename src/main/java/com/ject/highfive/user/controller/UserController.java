@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -37,7 +38,16 @@ public class UserController {
   public ApiResponse<MyInfoResponse> getMyInfo() {
     MyInfoResponse response =
         new MyInfoResponse(
-            1L, UserStatus.ACTIVE, "두현", null, "ROCK", "GUITAR", false, NextStep.BAND_START);
+            1L,
+            UserStatus.ACTIVE,
+            "두현",
+            null,
+            List.of("ROCK", "INDIE"),
+            List.of("VOCAL", "GUITAR"),
+            null,
+            null,
+            false,
+            NextStep.BAND_START);
     return ApiResponse.success(response);
   }
 
@@ -71,6 +81,8 @@ public class UserController {
       summary = "개인 프로필 저장",
       description =
           "닉네임·선호 장르·연주 포지션·사진을 저장한다. 온보딩 중(PENDING)이면 ACTIVE로 바꾼다. 마이페이지 수정에도 쓴다.\n\n"
+              + "장르·포지션은 여러 개를 고른다. 장르 기타(ETC)·포지션 직접입력(CUSTOM)을 고르면 "
+              + "genreCustomName·positionCustomName을 함께 보낸다.\n\n"
               + "에러: USER_001(닉네임 중복), USER_002(닉네임 형식), USER_003(필수 약관 미동의), COMMON_004\n\n"
               + "**현재는 가짜 응답**")
   @PutMapping("/me/profile")

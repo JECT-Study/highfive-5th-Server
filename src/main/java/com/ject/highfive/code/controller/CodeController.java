@@ -27,15 +27,22 @@ public class CodeController {
           CodeType.GENRE,
           List.of(
               new CodeResponse("ROCK", "록"),
+              new CodeResponse("INDIE", "인디"),
+              new CodeResponse("METAL", "메탈"),
+              new CodeResponse("PUNK", "펑크"),
               new CodeResponse("POP", "팝"),
-              new CodeResponse("JAZZ", "재즈")),
+              new CodeResponse("JAZZ", "재즈"),
+              // 고르면 직접 입력 칸(genreCustomName)이 나온다
+              new CodeResponse("ETC", "기타")),
           CodeType.POSITION,
           List.of(
               new CodeResponse("VOCAL", "보컬"),
               new CodeResponse("GUITAR", "기타"),
               new CodeResponse("BASS", "베이스"),
               new CodeResponse("DRUM", "드럼"),
-              new CodeResponse("KEYBOARD", "키보드")));
+              new CodeResponse("KEYBOARD", "키보드"),
+              // 고르면 직접 입력 칸(positionCustomName)이 나온다
+              new CodeResponse("CUSTOM", "직접입력")));
 
   @Operation(
       summary = "코드 목록 조회",
