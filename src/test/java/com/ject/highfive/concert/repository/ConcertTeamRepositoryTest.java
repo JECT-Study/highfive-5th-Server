@@ -30,6 +30,11 @@ class ConcertTeamRepositoryTest {
         ConcertTeam.builder().concert(concert).bandId(bandId).build());
   }
 
+  private ConcertTeam savedTeam(Concert concert, Long bandId, Integer lineupOrder) {
+    return concertTeamRepository.saveAndFlush(
+        ConcertTeam.builder().concert(concert).bandId(bandId).lineupOrder(lineupOrder).build());
+  }
+
   @Test
   @DisplayName("합류 수에서 주최 팀, 나간 팀, 강퇴된 팀, 다른 공연의 팀은 빠진다")
   void countJoinedGuestTeams() {
@@ -73,11 +78,6 @@ class ConcertTeamRepositoryTest {
                     JoinedTeamCount::getConcertId, JoinedTeamCount::getJoinedTeamCount));
 
     assertThat(counts).containsOnly(entry(first.getId(), 2L), entry(second.getId(), 1L));
-  }
-
-  private ConcertTeam savedTeam(Concert concert, Long bandId, Integer lineupOrder) {
-    return concertTeamRepository.saveAndFlush(
-        ConcertTeam.builder().concert(concert).bandId(bandId).lineupOrder(lineupOrder).build());
   }
 
   @Test
