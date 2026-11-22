@@ -1,0 +1,20 @@
+# CodeDeploy 배포 명세. 배포 묶음(zip)의 최상위가 이 deploy/ 폴더다
+version: 0.0
+os: linux
+files:
+  - source: /
+    destination: /home/ubuntu/app
+file_exists_behavior: OVERWRITE
+permissions:
+  - object: /home/ubuntu/app
+    owner: ubuntu
+    group: ubuntu
+hooks:
+  ApplicationStart:
+    - location: scripts/deploy.sh
+      timeout: 300
+      runas: ubuntu
+  ValidateService:
+    - location: scripts/health.sh
+      timeout: 180
+      runas: ubuntu

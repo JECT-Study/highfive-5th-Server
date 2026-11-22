@@ -27,6 +27,7 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.SortNatural;
 
 @Getter
@@ -92,6 +93,8 @@ public class Concert extends BaseTimeEntity {
   private ConcertStatus status;
 
   // HashSet은 JVM마다 순서가 달라져 화면 순서가 흔들린다. enum 선언 순서로 정렬한다
+  // 목록(2.5)에서 페이지의 공연 장르를 한 번에 읽는다 (스펙 4.5)
+  @BatchSize(size = 100)
   @Getter(AccessLevel.NONE)
   @ElementCollection
   @CollectionTable(name = "concert_genres", joinColumns = @JoinColumn(name = "concert_id"))

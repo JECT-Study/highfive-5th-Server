@@ -3,10 +3,16 @@ package com.ject.highfive.recruit.repository;
 import com.ject.highfive.recruit.entity.RecruitPost;
 import jakarta.persistence.LockModeType;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
 
-public interface RecruitPostRepository extends JpaRepository<RecruitPost, Long> {
+public interface RecruitPostRepository
+    extends JpaRepository<RecruitPost, Long>, JpaSpecificationExecutor<RecruitPost> {
 
   // 삭제한 공고도 포함한다 (공연당 공고 1개, 스펙 4.5)
   boolean existsByConcertId(Long concertId);
@@ -19,4 +25,9 @@ public interface RecruitPostRepository extends JpaRepository<RecruitPost, Long> 
 
   // 찜은 공고가 있는지만 잠그지 않고 본다. 배타 잠금으로 읽으면 같은 공고의 찜끼리 줄을 선다 (222 스펙 4.4)
   boolean existsByIdAndDeletedAtIsNull(Long id);
+
+  // 목록(2.5)은 공연을 함께 읽는다. 공고당 공연 1개라 행이 늘지 않고, 개수 쿼리에는 걸리지 않는다
+  @Override
+  @EntityGraph(attributePaths = "concert")
+  Page<RecruitPost> findAll(Specification<RecruitPost> spec, Pageable pageable);
 }
