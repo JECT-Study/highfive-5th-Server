@@ -33,13 +33,16 @@ class OidcTokenVerifierTest {
 
   private static final String KAKAO_ISSUER = "https://kauth.kakao.com";
   private static final String KAKAO_APP_KEY = "kakao-app-key";
+  // dev 빌드는 다른 네이티브 앱 키를 쓴다
+  private static final String KAKAO_DEV_APP_KEY = "kakao-dev-app-key";
   private static final OidcProperties.Provider KAKAO =
-      new OidcProperties.Provider("https://unused", List.of(KAKAO_ISSUER), KAKAO_APP_KEY);
+      new OidcProperties.Provider(
+          "https://unused", List.of(KAKAO_ISSUER), List.of(KAKAO_APP_KEY, KAKAO_DEV_APP_KEY));
   private static final OidcProperties.Provider GOOGLE =
       new OidcProperties.Provider(
           "https://unused",
           List.of("accounts.google.com", "https://accounts.google.com"),
-          "google-client-id");
+          List.of("google-client-id"));
 
   private final KeyPair socialKey = generateRsaKey();
   private final KeyPair otherKey = generateRsaKey();
@@ -165,7 +168,7 @@ class OidcTokenVerifierTest {
                     new OidcProperties.Provider(
                         "https://kauth.kakao.com/.well-known/jwks.json",
                         List.of(KAKAO_ISSUER),
-                        ""))));
+                        List.of(" ", "")))));
 
     assertThatThrownBy(() -> fromProperties.verify(SocialProvider.KAKAO, "any"))
         .isInstanceOf(BusinessException.class)
@@ -227,5 +230,14 @@ class OidcTokenVerifierTest {
     assertThatThrownBy(() -> outage.verify(SocialProvider.KAKAO, "any-token"))
         .isInstanceOf(JwtException.class)
         .isNotInstanceOf(BusinessException.class);
+  }
+
+  @Test
+  @DisplayName("aud가 설정한 값 중 하나와 같으면 통과한다 (카카오 Default·Dev 앱 키)")
+  void acceptsAnyConfiguredAudience() {
+    String devBuildToken = kakaoToken(socialKey, c -> c.audience(List.of(KAKAO_DEV_APP_KEY)));
+
+    assertThat(verifier.verify(SocialProvider.KAKAO, devBuildToken).providerUserId())
+        .isEqualTo("kakao-user-1");
   }
 }

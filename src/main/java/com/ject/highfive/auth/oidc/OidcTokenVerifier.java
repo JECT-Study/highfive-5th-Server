@@ -51,7 +51,7 @@ public class OidcTokenVerifier {
   public SocialUserInfo verify(SocialProvider provider, String idToken) {
     JwtDecoder decoder = decoders.get(provider);
     if (decoder == null) {
-      // 콘솔 등록 전이라 audience가 없는 소셜. 앱에는 검증 실패로 알리고 원인은 로그로 남긴다
+      // 콘솔 등록 전이라 audiences가 없는 소셜. 앱에는 검증 실패로 알리고 원인은 로그로 남긴다
       log.warn("{} 로그인 설정(oidc.providers)이 없어 ID 토큰을 검증할 수 없습니다.", provider);
       throw new BusinessException(AuthErrorCode.SOCIAL_TOKEN_INVALID);
     }
@@ -82,7 +82,7 @@ public class OidcTokenVerifier {
   // 서명 외에 확인할 것: 만료(exp·nbf), 발급자(iss), 우리 앱용 토큰인지(aud)
   static OAuth2TokenValidator<Jwt> validator(OidcProperties.Provider provider) {
     List<String> issuers = provider.issuers();
-    String audience = provider.audience();
+    List<String> audiences = provider.audiences();
     // 기본값은 exp가 없으면 통과시키므로 막는다 (OIDC에서 exp는 필수 클레임)
     JwtTimestampValidator timestampValidator = new JwtTimestampValidator();
     timestampValidator.setAllowEmptyExpiryClaim(false);
@@ -91,7 +91,7 @@ public class OidcTokenVerifier {
         new JwtClaimValidator<Object>(
             JwtClaimNames.ISS, iss -> iss != null && issuers.contains(iss.toString())),
         new JwtClaimValidator<List<String>>(
-            JwtClaimNames.AUD, aud -> aud != null && aud.contains(audience)));
+            JwtClaimNames.AUD, aud -> aud != null && aud.stream().anyMatch(audiences::contains)));
   }
 
   private static Map<SocialProvider, JwtDecoder> createDecoders(OidcProperties properties) {
@@ -101,7 +101,7 @@ public class OidcTokenVerifier {
         .forEach(
             (provider, config) -> {
               if (!config.isConfigured()) {
-                log.warn("{} 로그인은 oidc.providers 설정(audience 등)이 없어 비활성화합니다.", provider);
+                log.warn("{} 로그인은 oidc.providers 설정(audiences 등)이 없어 비활성화합니다.", provider);
                 return;
               }
               // JWKS는 처음 검증할 때 받아 오고 캐시한다. 세 소셜 모두 RS256으로 서명한다
