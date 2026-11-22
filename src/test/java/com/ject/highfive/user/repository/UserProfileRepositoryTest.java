@@ -7,6 +7,7 @@ import com.ject.highfive.code.entity.GenreCode;
 import com.ject.highfive.support.MySqlRepositoryTest;
 import com.ject.highfive.user.entity.User;
 import com.ject.highfive.user.entity.UserGenre;
+import com.ject.highfive.user.service.UserProfileService;
 import jakarta.persistence.EntityManager;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
@@ -45,7 +46,13 @@ class UserProfileRepositoryTest {
     userWithNickname("두현");
 
     assertThatThrownBy(() -> userWithNickname("두현"))
-        .isInstanceOf(DataIntegrityViolationException.class);
+        .isInstanceOf(DataIntegrityViolationException.class)
+        // MySQL이 내는 오류도 서비스가 닉네임 충돌(USER_001)로 알아본다
+        .satisfies(
+            e ->
+                assertThat(
+                        UserProfileService.isNicknameConflict((DataIntegrityViolationException) e))
+                    .isTrue());
   }
 
   @Test

@@ -50,7 +50,10 @@ public record ProfileUpdateRequest(
             nullable = true,
             example = "하모니카")
         String positionCustomName,
-    @Schema(description = "업로드 URL 발급 API로 올린 이미지의 fileUrl. 사진을 건너뛰면 null", nullable = true)
+    @Schema(
+            description = "업로드 URL 발급 API로 올린 이미지의 fileUrl (500자 이하). 사진을 건너뛰면 null",
+            nullable = true)
+        @Size(max = User.PROFILE_IMAGE_URL_MAX_LENGTH, message = "프로필 사진 주소는 500자 이하여야 합니다.")
         String profileImageUrl) {
 
   // 검증을 통과한 뒤에만 부른다. 중복은 처음 나온 순서대로 하나만 남긴다
@@ -60,6 +63,11 @@ public record ProfileUpdateRequest(
 
   public List<PositionCode> positions() {
     return new LinkedHashSet<>(positionCodes).stream().map(PositionCode::valueOf).toList();
+  }
+
+  // 빈 문자열은 사진을 건너뛴 것(null)으로 본다
+  public String profileImageUrlOrNull() {
+    return profileImageUrl == null || profileImageUrl.isBlank() ? null : profileImageUrl;
   }
 
   // 직접 입력 값은 앞뒤 공백을 빼고, 해당 코드를 고르지 않았으면 null

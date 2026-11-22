@@ -9,6 +9,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -17,7 +18,10 @@ import lombok.NoArgsConstructor;
 // 서비스 안의 사람 1명 + 개인 프로필. 로그인 수단은 UserSocialAccount로 분리한다
 @Getter
 @Entity
-@Table(name = "users")
+@Table(
+    name = "users",
+    uniqueConstraints =
+        @UniqueConstraint(name = User.NICKNAME_UNIQUE_CONSTRAINT, columnNames = "nickname"))
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User extends BaseTimeEntity {
 
@@ -25,6 +29,8 @@ public class User extends BaseTimeEntity {
   public static final int NICKNAME_MIN_LENGTH = 2;
   public static final int NICKNAME_MAX_LENGTH = 10;
   public static final String NICKNAME_REGEX = "^[가-힣a-zA-Z0-9]+$";
+  public static final String NICKNAME_UNIQUE_CONSTRAINT = "uk_users_nickname";
+  public static final int PROFILE_IMAGE_URL_MAX_LENGTH = 500;
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -32,10 +38,10 @@ public class User extends BaseTimeEntity {
 
   // 프로필을 만들기 전과 탈퇴 후에는 null. 영문 대소문자를 구분하므로(Rock ≠ rock, 결정 #32)
   // DB 기본 정렬 규칙(utf8mb4_unicode_ci) 대신 utf8mb4_bin으로 저장·비교한다 (UNIQUE도 같은 기준)
-  @Column(unique = true, columnDefinition = "varchar(10) collate utf8mb4_bin")
+  @Column(columnDefinition = "varchar(10) collate utf8mb4_bin")
   private String nickname;
 
-  @Column(name = "profile_image_url", length = 500)
+  @Column(name = "profile_image_url", length = PROFILE_IMAGE_URL_MAX_LENGTH)
   private String profileImageUrl;
 
   @Enumerated(EnumType.STRING)

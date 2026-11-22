@@ -13,7 +13,9 @@ public interface UserPositionRepository extends JpaRepository<UserPosition, Long
 
   // 바로 DELETE 문을 실행한다. 파생 삭제(deleteBy...)는 INSERT보다 늦게 실행돼
   // 같은 포지션을 다시 저장할 때 UNIQUE(user_id, position_code)에 걸린다
+  // clearAutomatically는 켜지 않는다: 영속성 컨텍스트를 비우면 같은 트랜잭션의 User가 준영속이 되어
+  // 바로 뒤에 저장하는 행이 회원을 참조할 수 없다
   @Modifying(flushAutomatically = true)
-  @Query("delete from UserPosition g where g.user.id = :userId")
+  @Query("delete from UserPosition p where p.user.id = :userId")
   void deleteAllByUserId(@Param("userId") Long userId);
 }

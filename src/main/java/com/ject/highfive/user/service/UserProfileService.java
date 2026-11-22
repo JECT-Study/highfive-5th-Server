@@ -12,8 +12,10 @@ import com.ject.highfive.user.exception.UserErrorCode;
 import com.ject.highfive.user.repository.UserGenreRepository;
 import com.ject.highfive.user.repository.UserPositionRepository;
 import com.ject.highfive.user.repository.UserRepository;
+import java.util.Locale;
 import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -62,18 +64,25 @@ public class UserProfileService {
   // 닉네임·사진을 저장하고 장르·포지션은 지우고 다시 저장한다. 온보딩 중(PENDING)이면 ACTIVE로 바꾼다
   @Transactional
   public ProfileUpdateResponse updateProfile(Long userId, ProfileUpdateRequest request) {
-    User user = findUser(userId);
+    User user =
+        userRepository
+            .findByIdForUpdate(userId)
+            .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
     // TODO: 최신 필수 약관에 모두 동의하지 않았으면 USER_003 (JECT-213, 약관 정책 PM 확정 후)
     // TODO: profileImageUrl은 이미지 저장소(CloudFront) 주소만 허용한다 (JECT-247 저장소 구성 후)
     if (userRepository.existsByNicknameAndIdNot(request.nickname(), userId)) {
       throw new BusinessException(UserErrorCode.NICKNAME_DUPLICATED);
     }
-    user.updateProfile(request.nickname(), request.profileImageUrl());
+    user.updateProfile(request.nickname(), request.profileImageUrlOrNull());
     try {
       // 위 확인과 저장 사이에 다른 회원이 같은 닉네임을 저장하면 UNIQUE 위반으로 여기서 걸린다
       userRepository.flush();
     } catch (DataIntegrityViolationException e) {
-      throw new BusinessException(UserErrorCode.NICKNAME_DUPLICATED);
+      // 닉네임 UNIQUE 위반만 USER_001로 바꾸고, 그 밖의 무결성 오류는 서버 오류로 드러낸다
+      if (isNicknameConflict(e)) {
+        throw new BusinessException(UserErrorCode.NICKNAME_DUPLICATED);
+      }
+      throw e;
     }
     replaceGenresAndPositions(user, request);
     return new ProfileUpdateResponse(user.getStatus(), nextStepResolver.resolve(user));
@@ -92,6 +101,19 @@ public class UserProfileService {
         request.positions().stream()
             .map(position -> new UserPosition(user, position, positionCustomName))
             .toList());
+  }
+
+  public static boolean isNicknameConflict(DataIntegrityViolationException e) {
+    for (Throwable cause = e; cause != null; cause = cause.getCause()) {
+      String name =
+          cause instanceof ConstraintViolationException violation
+              ? violation.getConstraintName()
+              : cause.getMessage();
+      if (name != null && name.toLowerCase(Locale.ROOT).contains(User.NICKNAME_UNIQUE_CONSTRAINT)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private User findUser(Long userId) {
