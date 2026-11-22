@@ -214,4 +214,88 @@ class UserProfileApiTest {
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.code").value("USER_005"));
   }
+
+  // 장르 ETC만 고르고 직접 입력 값을 바꿔 가며 저장한다
+  private ResultActions saveWithGenreCustomName(String genreCustomNameJson) throws Exception {
+    return saveProfile(
+        newUser(),
+        "{\"nickname\":\""
+            + uniqueNickname("입력")
+            + "\",\"genreCodes\":[\"ETC\"],"
+            + "\"genreCustomName\":"
+            + genreCustomNameJson
+            + ",\"positionCodes\":[\"VOCAL\"]}");
+  }
+
+  @Test
+  @DisplayName("직접 입력 값: 10자 초과·중간 공백·자모·특수문자·공백만은 COMMON 004")
+  void customNameFormatIsValidated() throws Exception {
+    for (String invalid :
+        new String[] {"\"가나다라마바사아자차카\"", "\"시티 팝\"", "\"ㅋㅋ\"", "\"팝#\"", "\"   \""}) {
+      saveWithGenreCustomName(invalid)
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.code").value("COMMON_004"))
+          .andExpect(jsonPath("$.errors[0].field").value("genreCustomName"));
+    }
+    // 앞뒤 공백만 빼면 10자면 통과
+    saveWithGenreCustomName("\"  가나다라마바사아자차  \"").andExpect(status().isOk());
+  }
+
+  @Test
+  @DisplayName("직접입력(CUSTOM)을 고르지 않았으면 공백만 있는 값은 보낸 것으로 보지 않는다")
+  void blankCustomNameWithoutSelectionIsIgnored() throws Exception {
+    saveProfile(
+            newUser(),
+            "{\"nickname\":\""
+                + uniqueNickname("공백")
+                + "\",\"genreCodes\":[\"ROCK\"],"
+                + "\"positionCodes\":[\"VOCAL\"],\"positionCustomName\":\"  \"}")
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  @DisplayName("닉네임에 자모·이모지가 있으면 확인은 INVALID_CHARACTER, 저장은 COMMON 004")
+  void nicknameRejectsJamoAndEmoji() throws Exception {
+    Long userId = newUser();
+    for (String nickname : new String[] {"ㅋㅋㅋ", "🎸🎸"}) {
+      checkNickname(userId, nickname)
+          .andExpect(jsonPath("$.data.available").value(false))
+          .andExpect(jsonPath("$.data.reason").value("INVALID_CHARACTER"));
+      saveProfile(userId, profileBody(nickname))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.code").value("COMMON_004"))
+          .andExpect(jsonPath("$.errors[0].field").value("nickname"));
+    }
+  }
+
+  @Test
+  @DisplayName("프로필 사진 주소가 500자를 넘으면 COMMON 004, 빈 문자열은 사진 없음(null)으로 저장")
+  void profileImageUrlLength() throws Exception {
+    String tooLong = "https://cdn.example.com/" + "a".repeat(500);
+    saveProfile(
+            newUser(),
+            profileBody(uniqueNickname("사진"))
+                .replace("\"profileImageUrl\":null", "\"profileImageUrl\":\"" + tooLong + "\""))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("COMMON_004"))
+        .andExpect(jsonPath("$.errors[0].field").value("profileImageUrl"));
+
+    Long userId = newUser();
+    saveProfile(
+            userId,
+            profileBody(uniqueNickname("빈사진"))
+                .replace("\"profileImageUrl\":null", "\"profileImageUrl\":\"\""))
+        .andExpect(status().isOk());
+    mockMvc
+        .perform(get("/api/v1/users/me").header(HttpHeaders.AUTHORIZATION, bearer(userId)))
+        .andExpect(jsonPath("$.data.profileImageUrl").value(nullValue()));
+  }
+
+  @Test
+  @DisplayName("프로필 저장도 토큰의 회원이 없으면 404 USER_005")
+  void saveProfileOfUnknownUserIsNotFound() throws Exception {
+    saveProfile(999_999_999L, profileBody(uniqueNickname("없음")))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("USER_005"));
+  }
 }
