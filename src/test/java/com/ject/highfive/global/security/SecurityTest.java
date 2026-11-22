@@ -43,8 +43,8 @@ import org.springframework.test.web.servlet.ResultActions;
 @AutoConfigureMockMvc
 class SecurityTest {
 
-  // 로그인이 필요한 API 아무거나 (내 정보 조회)
-  private static final String PROTECTED_URL = "/api/v1/users/me";
+  // 로그인이 필요한 API 중 DB의 회원 없이도 응답하는 것 (코드 목록)
+  private static final String PROTECTED_URL = "/api/v1/codes?types=GENRE";
 
   @Autowired MockMvc mockMvc;
   @Autowired JwtTokenProvider jwtTokenProvider;

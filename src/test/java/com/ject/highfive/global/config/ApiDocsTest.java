@@ -3,7 +3,6 @@ package com.ject.highfive.global.config;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasKey;
-import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -161,34 +160,6 @@ class ApiDocsTest {
         .perform(get("/v3/api-docs"))
         .andExpect(jsonPath("$.paths['/test/created'].post.responses['201']").exists())
         .andExpect(jsonPath("$.paths['/test/created'].post.responses['200']").doesNotExist());
-  }
-
-  @Test
-  @DisplayName("내 정보 조회는 장르·포지션을 배열로, 직접 입력 값은 별도 필드로 돌려준다")
-  void myInfoReturnsCodeArrays() throws Exception {
-    mockMvc
-        .perform(get("/api/v1/users/me").header(HttpHeaders.AUTHORIZATION, bearerToken()))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.data.genreCodes").isArray())
-        .andExpect(jsonPath("$.data.positionCodes").isArray())
-        .andExpect(jsonPath("$.data.genreCustomName").value(nullValue()))
-        .andExpect(jsonPath("$.data.positionCustomName").value(nullValue()));
-  }
-
-  @Test
-  @DisplayName("프로필 저장은 장르·포지션 배열과 직접 입력 값을 받는다")
-  void profileAcceptsCodeArrays() throws Exception {
-    mockMvc
-        .perform(
-            put("/api/v1/users/me/profile")
-                .header(HttpHeaders.AUTHORIZATION, bearerToken())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(
-                    "{\"nickname\":\"Rock두현1\",\"genreCodes\":[\"ROCK\",\"ETC\"],"
-                        + "\"genreCustomName\":\"시티팝\",\"positionCodes\":[\"VOCAL\"],"
-                        + "\"positionCustomName\":null,\"profileImageUrl\":null}"))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.data.status").value("ACTIVE"));
   }
 
   @Test

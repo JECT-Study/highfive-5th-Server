@@ -22,8 +22,10 @@ import com.ject.highfive.user.entity.User;
 import com.ject.highfive.user.entity.UserSocialAccount;
 import com.ject.highfive.user.entity.UserStatus;
 import com.ject.highfive.user.repository.UserSocialAccountRepository;
+import com.ject.highfive.user.service.ActiveBandChecker;
 import com.ject.highfive.user.service.NextStepResolver;
 import com.ject.highfive.user.service.SocialSignUpService;
+import com.ject.highfive.user.service.TermAgreementChecker;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -42,7 +44,11 @@ class SocialLoginServiceTest {
   private final AuthService authService = mock(AuthService.class);
   private final SocialLoginService socialLoginService =
       new SocialLoginService(
-          oidcTokenVerifier, accountRepository, signUpService, authService, new NextStepResolver());
+          oidcTokenVerifier,
+          accountRepository,
+          signUpService,
+          authService,
+          new NextStepResolver(new TermAgreementChecker(), new ActiveBandChecker()));
 
   private static User userWithId(long id) {
     User user = User.signUp();
