@@ -16,6 +16,7 @@ import com.ject.highfive.recruit.repository.RecruitPostRepository;
 import com.ject.highfive.support.ConcertFixture;
 import com.ject.highfive.support.MySqlContainerConfig;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -31,7 +32,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.transaction.support.TransactionTemplate;
 
-// 실제 MySQL에서 두 트랜잭션을 겹쳐 공고 조회의 비관적 락이 동작하는지 본다
+// 실제 MySQL에서 두 트랜잭션을 겹쳐 공고·공연 조회의 비관적 락이 동작하는지 본다
 @SpringBootTest
 @Import(MySqlContainerConfig.class)
 class RecruitPostServiceConcurrencyTest {
@@ -114,6 +115,50 @@ class RecruitPostServiceConcurrencyTest {
     RecruitPost result = recruitPostRepository.findById(postId).orElseThrow();
     assertThat(result.getStatus()).isEqualTo(RecruitPostStatus.CLOSED);
     assertThat(result.getDescription()).isEqualTo("기존 소개");
+  }
+
+  @Test
+  @DisplayName("같은 공연에 공고를 동시에 작성하면 하나만 만들어지고 나머지는 RECRUIT_002를 받는다")
+  void concurrentCreateOnlyOneSucceeds() throws Exception {
+    Long concertId = concertRepository.saveAndFlush(ConcertFixture.concert()).getId();
+    RecruitPostRequest request =
+        new RecruitPostRequest(
+            WantedCareerLevel.Y1_TO_3, List.of(TeamType.ANYONE), LocalDate.of(2999, 12, 1), "소개");
+    int threads = 2;
+    CountDownLatch start = new CountDownLatch(1);
+    ExecutorService executor = Executors.newFixedThreadPool(threads);
+    List<Future<?>> creates = new ArrayList<>();
+    try {
+      for (int i = 0; i < threads; i++) {
+        creates.add(
+            executor.submit(
+                () -> {
+                  awaitQuietly(start);
+                  return recruitPostService.create(concertId, 10L, request);
+                }));
+      }
+      start.countDown();
+
+      // 락이 없으면 둘 다 중복 확인을 통과하고, 진 쪽은 RECRUIT_002가 아니라 UNIQUE 위반으로 실패한다
+      List<Object> failures = new ArrayList<>();
+      for (Future<?> create : creates) {
+        try {
+          create.get(10, TimeUnit.SECONDS);
+        } catch (ExecutionException e) {
+          failures.add(e.getCause());
+        }
+      }
+      assertThat(failures)
+          .singleElement()
+          .isInstanceOf(BusinessException.class)
+          .extracting("errorCode")
+          .isEqualTo(RecruitErrorCode.RECRUIT_POST_ALREADY_EXISTS);
+    } finally {
+      start.countDown();
+      executor.shutdownNow();
+    }
+
+    assertThat(recruitPostRepository.findAll()).hasSize(1);
   }
 
   private static void awaitQuietly(CountDownLatch latch) {

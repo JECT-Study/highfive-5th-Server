@@ -74,7 +74,7 @@ class RecruitPostServiceTest {
   }
 
   private void givenSaveAssignsId(Long id) {
-    given(recruitPostRepository.existsByConcertId(CONCERT_ID)).willReturn(false);
+    given(recruitPostRepository.existsByConcertIdAndDeletedAtIsNull(CONCERT_ID)).willReturn(false);
     given(recruitPostRepository.save(any(RecruitPost.class)))
         .willAnswer(
             invocation -> {
@@ -244,10 +244,10 @@ class RecruitPostServiceTest {
   }
 
   @Test
-  @DisplayName("이미 공고가 있는 공연(삭제한 공고 포함)이면 RECRUIT_002")
+  @DisplayName("삭제하지 않은 공고가 이미 있는 공연이면 RECRUIT_002")
   void alreadyExists() {
     givenConcert(concert(PERFORM_DATE));
-    given(recruitPostRepository.existsByConcertId(CONCERT_ID)).willReturn(true);
+    given(recruitPostRepository.existsByConcertIdAndDeletedAtIsNull(CONCERT_ID)).willReturn(true);
 
     assertError(
         () -> service.create(CONCERT_ID, USER_ID, request(DEADLINE)),
