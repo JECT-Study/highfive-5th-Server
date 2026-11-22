@@ -4,6 +4,7 @@ import com.ject.highfive.concert.entity.Genre;
 import com.ject.highfive.global.common.response.ApiResponse;
 import com.ject.highfive.global.common.response.PageResponse;
 import com.ject.highfive.recruit.dto.RecruitPostCreateResponse;
+import com.ject.highfive.recruit.dto.RecruitPostDetailResponse;
 import com.ject.highfive.recruit.dto.RecruitPostRequest;
 import com.ject.highfive.recruit.dto.RecruitPostSearchRequest;
 import com.ject.highfive.recruit.dto.RecruitPostSummaryResponse;
@@ -32,7 +33,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "모집 공고", description = "모집 공고 작성·수정·마감·삭제·목록")
+@Tag(name = "모집 공고", description = "모집 공고 작성·수정·마감·삭제·목록·상세")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1")
@@ -89,6 +90,26 @@ public class RecruitPostController {
       return DEFAULT_PAGE_SIZE;
     }
     return Math.min(size, MAX_PAGE_SIZE);
+  }
+
+  @Operation(
+      summary = "모집 공고 상세",
+      description =
+          "공연 정보, 모집 현황, 참여 밴드(주최 팀 + 합류한 팀, 라인업 순서)를 돌려준다. "
+              + "마감된 공고도 열린다(status CLOSED, canInquire false).\n\n"
+              + "- joinedTeamCount·recruitTeamCount: 둘 다 주최 팀 제외 (\"1/3팀 모집 완료\")\n"
+              + "- teams[].setlist: 셋리스트 기능 전까지 항상 빈 목록\n"
+              + "- 참여 밴드는 밴드 기능 전까지 임시 목록(bandId 1~5)에서 가져온다. 목록에 없는 밴드는 teams에서 빠진다\n\n"
+              + "에러: RECRUIT_001(공고 없음, 삭제된 공고, 공연이 삭제된 공고)\n\n"
+              + "**임시: `X-User-Id` 헤더 필수 (로그인 연동 전). isMine은 아직 항상 false, "
+              + "canInquire는 내 밴드 공고인지 아직 보지 않는다**")
+  @GetMapping("/recruit-posts/{recruitPostId}")
+  public ApiResponse<RecruitPostDetailResponse> getDetail(
+      @Parameter(description = "모집 공고 ID") @PathVariable Long recruitPostId,
+      // TODO: JECT-249 로그인 연동(JECT-211) 후 로그인 사용자로 바꾼다
+      @Parameter(description = "임시: 로그인 연동 전 사용자 ID", example = "1") @RequestHeader("X-User-Id")
+          Long userId) {
+    return ApiResponse.success(recruitPostQueryService.getDetail(recruitPostId, userId));
   }
 
   @Operation(
