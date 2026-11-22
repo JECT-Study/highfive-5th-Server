@@ -13,7 +13,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -40,10 +40,15 @@ public class RecruitPost extends BaseTimeEntity {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  // 공연당 공고는 하나 (UNIQUE). 삭제한 공고도 행이 남아 다시 작성할 수 없다 (스펙 4.5)
-  @OneToOne(fetch = FetchType.LAZY, optional = false)
-  @JoinColumn(name = "concert_id", nullable = false, unique = true)
+  // 공고를 지운 공연에 다시 쓰면 새 행이 생겨 한 공연에 공고 행이 여럿일 수 있다 (의사결정 D13)
+  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @JoinColumn(name = "concert_id", nullable = false)
   private Concert concert;
+
+  // 살아 있는 공고만 concert_id 값을 갖는다. MySQL에 부분 UNIQUE가 없어 이 컬럼의 UNIQUE로
+  // 공연당 살아 있는 공고를 하나로 막는다. 지운 공고는 NULL이라 여럿이어도 걸리지 않는다 (의사결정 D13)
+  @Column(name = "active_concert_id", unique = true)
+  private Long activeConcertId;
 
   @Column(name = "author_user_id", nullable = false)
   private Long authorUserId;
@@ -83,6 +88,7 @@ public class RecruitPost extends BaseTimeEntity {
       LocalDate deadline,
       String description) {
     this.concert = concert;
+    this.activeConcertId = concert.getId();
     this.authorUserId = authorUserId;
     this.wantedCareerLevel = wantedCareerLevel;
     this.deadline = deadline;
@@ -118,6 +124,7 @@ public class RecruitPost extends BaseTimeEntity {
 
   public void delete() {
     this.deletedAt = LocalDateTime.now();
+    this.activeConcertId = null;
   }
 
   // 빠진 유형은 행이 지워지고(hard delete, 의사결정 D9) 새 유형은 추가된다

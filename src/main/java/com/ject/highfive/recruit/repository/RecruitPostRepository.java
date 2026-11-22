@@ -14,8 +14,8 @@ import org.springframework.data.jpa.repository.Lock;
 public interface RecruitPostRepository
     extends JpaRepository<RecruitPost, Long>, JpaSpecificationExecutor<RecruitPost> {
 
-  // 삭제한 공고도 포함한다 (공연당 공고 1개, 스펙 4.5)
-  boolean existsByConcertId(Long concertId);
+  // 삭제한 공고는 세지 않는다. 지운 뒤에는 같은 공연에 다시 쓸 수 있다 (의사결정 D13)
+  boolean existsByConcertIdAndDeletedAtIsNull(Long concertId);
 
   // 수정·마감·삭제가 동시에 오면 UPDATE가 옛 status·deleted_at을 다시 써서 서로를 덮어쓴다. 행을 잠가 차례로 처리한다
   @Lock(LockModeType.PESSIMISTIC_WRITE)

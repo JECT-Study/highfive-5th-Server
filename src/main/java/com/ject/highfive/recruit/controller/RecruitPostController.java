@@ -94,11 +94,11 @@ public class RecruitPostController {
   @Operation(
       summary = "모집 공고 작성",
       description =
-          "공연의 모집 공고를 작성한다. 공연당 하나.\n\n"
+          "공연의 모집 공고를 작성한다. 공연당 하나. 공고를 지운 공연에는 새 공고로 다시 쓸 수 있다.\n\n"
               + "에러: COMMON_004(필수값·500자), COMMON_001(목록에 없는 코드), "
               + "RECRUIT_003(마감일이 오늘 이전), CONCERT_001(공연 없음), RECRUIT_006(이미 지난 공연), "
               + "RECRUIT_005(마감일이 공연 날짜보다 늦음), "
-              + "RECRUIT_002(이미 공고가 있음, 삭제한 공고 포함)\n\n"
+              + "RECRUIT_002(삭제하지 않은 공고가 이미 있음)\n\n"
               + "**임시: `X-User-Id` 헤더 필수 (로그인 연동 전). 주최 대표자 확인은 아직 하지 않는다**")
   @PostMapping("/concerts/{concertId}/recruit-posts")
   @ResponseStatus(HttpStatus.CREATED)
@@ -151,7 +151,7 @@ public class RecruitPostController {
   @Operation(
       summary = "모집 공고 삭제",
       description =
-          "공고를 삭제한다. 마감된 공고도 지울 수 있다. 공고를 지운 공연에는 다시 작성할 수 없다.\n\n"
+          "공고를 삭제한다. 마감된 공고도 지울 수 있다. 공고를 지운 공연에는 새 공고로 다시 쓸 수 있다.\n\n"
               + "에러: RECRUIT_001(공고 없음, 이미 삭제 포함)\n\n"
               + "**임시: `X-User-Id` 헤더 필수 (로그인 연동 전). 주최 대표자 확인은 아직 하지 않는다**")
   @DeleteMapping("/recruit-posts/{recruitPostId}")
