@@ -36,7 +36,7 @@ public class RecruitPostService {
     // TODO: JECT-248 #58 머지 후 concert.getHostBandId()의 현재 대표자인지 확인한다 (403 AUTH_005)
     validateConcertNotPerformed(concert);
     validateDeadlineNotAfterPerformDate(request.deadline(), concert);
-    if (recruitPostRepository.existsByConcertId(concertId)) {
+    if (recruitPostRepository.existsByConcertIdAndDeletedAtIsNull(concertId)) {
       throw new BusinessException(RecruitErrorCode.RECRUIT_POST_ALREADY_EXISTS);
     }
 

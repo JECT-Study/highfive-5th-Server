@@ -78,8 +78,8 @@ class RecruitPostRepositoryTest {
   }
 
   @Test
-  @DisplayName("같은 공연에 공고를 두 번 저장하면 UNIQUE 제약 위반")
-  void secondPostForSameConcertViolatesUnique() {
+  @DisplayName("같은 공연에 살아 있는 공고를 두 번 저장하면 UNIQUE 제약 위반")
+  void secondLivePostForSameConcertViolatesUnique() {
     Concert concert = savedConcert();
     recruitPostRepository.saveAndFlush(newPost(concert, TeamType.ANYONE));
 
@@ -88,14 +88,52 @@ class RecruitPostRepositoryTest {
   }
 
   @Test
-  @DisplayName("공고가 있는 공연만 existsByConcertId가 true다")
-  void existsByConcertId() {
-    Concert withPost = savedConcert();
-    Concert withoutPost = savedConcert();
-    recruitPostRepository.saveAndFlush(newPost(withPost, TeamType.ANYONE));
+  @DisplayName("공고를 두 번 지운 공연에도 새 공고를 저장할 수 있고, 살아 있는 공고만 active_concert_id를 갖는다")
+  void rewriteAfterDeletingTwice() {
+    Concert concert = savedConcert();
+    RecruitPost first = saveAndDelete(concert);
+    RecruitPost second = saveAndDelete(concert);
 
-    assertThat(recruitPostRepository.existsByConcertId(withPost.getId())).isTrue();
-    assertThat(recruitPostRepository.existsByConcertId(withoutPost.getId())).isFalse();
+    RecruitPost third = recruitPostRepository.saveAndFlush(newPost(concert, TeamType.ANYONE));
+    em.clear();
+
+    assertThat(List.of(first.getId(), second.getId(), third.getId())).doesNotHaveDuplicates();
+    assertThat(reload(first).getActiveConcertId()).isNull();
+    assertThat(reload(second).getActiveConcertId()).isNull();
+    assertThat(reload(third).getActiveConcertId()).isEqualTo(concert.getId());
+    assertThat(
+            recruitPostRepository
+                .findByConcertIdAndDeletedAtIsNull(concert.getId())
+                .map(RecruitPost::getId))
+        .contains(third.getId());
+  }
+
+  private RecruitPost saveAndDelete(Concert concert) {
+    RecruitPost post = recruitPostRepository.saveAndFlush(newPost(concert, TeamType.ANYONE));
+    post.delete();
+    em.flush();
+    return post;
+  }
+
+  private RecruitPost reload(RecruitPost post) {
+    return recruitPostRepository.findById(post.getId()).orElseThrow();
+  }
+
+  @Test
+  @DisplayName("existsByConcertIdAndDeletedAtIsNull은 살아 있는 공고가 있는 공연만 true다")
+  void existsByConcertIdAndDeletedAtIsNull() {
+    Concert withPost = savedConcert();
+    Concert withDeletedPost = savedConcert();
+    final Concert withoutPost = savedConcert();
+    recruitPostRepository.saveAndFlush(newPost(withPost, TeamType.ANYONE));
+    saveAndDelete(withDeletedPost);
+
+    assertThat(recruitPostRepository.existsByConcertIdAndDeletedAtIsNull(withPost.getId()))
+        .isTrue();
+    assertThat(recruitPostRepository.existsByConcertIdAndDeletedAtIsNull(withDeletedPost.getId()))
+        .isFalse();
+    assertThat(recruitPostRepository.existsByConcertIdAndDeletedAtIsNull(withoutPost.getId()))
+        .isFalse();
   }
 
   @Test
@@ -117,8 +155,8 @@ class RecruitPostRepositoryTest {
   }
 
   @Test
-  @DisplayName("삭제한 공고는 findByIdAndDeletedAtIsNull로 찾을 수 없지만 existsByConcertId는 찾는다")
-  void deletedPostHiddenButStillBlocksNewPost() {
+  @DisplayName("삭제한 공고는 findByIdAndDeletedAtIsNull로 찾을 수 없다")
+  void deletedPostHidden() {
     Concert concert = savedConcert();
     RecruitPost deleted = recruitPostRepository.saveAndFlush(newPost(concert, TeamType.ANYONE));
 
@@ -129,7 +167,6 @@ class RecruitPostRepositoryTest {
 
     assertThat(recruitPostRepository.findByIdAndDeletedAtIsNull(deleted.getId())).isEmpty();
     assertThat(recruitPostRepository.findByIdAndDeletedAtIsNull(live.getId())).isPresent();
-    assertThat(recruitPostRepository.existsByConcertId(concert.getId())).isTrue();
   }
 
   @Test
