@@ -20,4 +20,12 @@ public interface ConcertTeamRepository extends JpaRepository<ConcertTeam, Long> 
           + " group by t.concert.id")
   List<JoinedTeamCount> countGuestTeamsByConcertIds(
       @Param("concertIds") Collection<Long> concertIds, @Param("status") ConcertTeamStatus status);
+
+  // 공고 상세(2.7)·라인업(1.4)의 팀 순서. MySQL은 오름차순에서 NULL을 앞에 두므로 nulls last를 쓴다.
+  // 메서드 이름 방식(OrderByLineupOrderAsc)은 NULL이 앞에 와서 쓰지 않는다. Hibernate가 MySQL에 맞게 바꿔 보낸다
+  @Query(
+      "select t from ConcertTeam t where t.concert.id = :concertId and t.status = :status"
+          + " order by t.lineupOrder asc nulls last, t.id asc")
+  List<ConcertTeam> findLineup(
+      @Param("concertId") Long concertId, @Param("status") ConcertTeamStatus status);
 }
