@@ -1,12 +1,18 @@
 package com.ject.highfive.recruit.service;
 
+import com.ject.highfive.concert.dummy.DummyBand;
+import com.ject.highfive.concert.dummy.DummyBandStore;
+import com.ject.highfive.concert.entity.ConcertTeam;
 import com.ject.highfive.concert.entity.ConcertTeamStatus;
 import com.ject.highfive.concert.repository.ConcertTeamRepository;
 import com.ject.highfive.concert.repository.JoinedTeamCount;
 import com.ject.highfive.global.common.response.PageResponse;
+import com.ject.highfive.global.exception.BusinessException;
+import com.ject.highfive.recruit.dto.RecruitPostDetailResponse;
 import com.ject.highfive.recruit.dto.RecruitPostSearchRequest;
 import com.ject.highfive.recruit.dto.RecruitPostSummaryResponse;
 import com.ject.highfive.recruit.entity.RecruitPost;
+import com.ject.highfive.recruit.exception.RecruitErrorCode;
 import com.ject.highfive.recruit.repository.RecruitPostFavoriteRepository;
 import com.ject.highfive.recruit.repository.RecruitPostRepository;
 import com.ject.highfive.recruit.repository.RecruitPostSpecifications;
@@ -22,9 +28,10 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// 공고 목록(2.5). 쿼리는 페이지마다 최대 5번으로 고정된다:
-// 공고+공연, 개수, 장르(@BatchSize), 합류 팀 수, 찜 여부 (스펙 4.5)
-// open-in-view가 꺼져 있어 장르 지연 로딩이 끝나도록 응답을 트랜잭션 안에서 만든다
+// 공고 목록(2.5)과 상세(2.7).
+// 목록은 페이지마다 쿼리 최대 5번: 공고+공연, 개수, 장르(@BatchSize), 합류 팀 수, 찜 여부 (221 스펙 4.5)
+// 상세는 쿼리 5번: 공고+공연, 팀 유형, 공연 장르, 참여 팀, 찜 여부 (223 스펙 4.5)
+// open-in-view가 꺼져 있어 지연 로딩이 끝나도록 응답을 트랜잭션 안에서 만든다
 @Service
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
@@ -36,6 +43,23 @@ public class RecruitPostQueryService {
   private final RecruitPostRepository recruitPostRepository;
   private final ConcertTeamRepository concertTeamRepository;
   private final RecruitPostFavoriteRepository favoriteRepository;
+  private final DummyBandStore dummyBandStore;
+
+  public RecruitPostDetailResponse getDetail(Long recruitPostId, Long userId) {
+    RecruitPost post =
+        recruitPostRepository
+            .findWithConcertByIdAndDeletedAtIsNullAndConcertDeletedAtIsNull(recruitPostId)
+            .orElseThrow(() -> new BusinessException(RecruitErrorCode.RECRUIT_POST_NOT_FOUND));
+    List<ConcertTeam> teams =
+        concertTeamRepository.findLineup(post.getConcert().getId(), ConcertTeamStatus.JOINED);
+    Map<Long, DummyBand> bands =
+        dummyBandStore.findAllByIds(teams.stream().map(ConcertTeam::getBandId).toList());
+    boolean favorite =
+        favoriteRepository
+            .findRecruitPostIdsByUserId(userId, List.of(recruitPostId))
+            .contains(recruitPostId);
+    return RecruitPostDetailResponse.from(post, teams, bands, favorite, LocalDate.now());
+  }
 
   public PageResponse<RecruitPostSummaryResponse> search(
       RecruitPostSearchRequest request, int page, int size, Long userId) {
