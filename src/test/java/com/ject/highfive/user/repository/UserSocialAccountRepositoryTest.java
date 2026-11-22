@@ -78,4 +78,26 @@ class UserSocialAccountRepositoryTest {
                     account(second, SocialProvider.KAKAO, "kakao-1")))
         .isInstanceOf(DataIntegrityViolationException.class);
   }
+
+  @Test
+  @DisplayName("소셜 고유 ID는 대소문자를 구분한다 (AbC와 abc는 다른 계정)")
+  void providerUserIdIsCaseSensitive() {
+    User upper = userRepository.save(User.signUp());
+    User lower = userRepository.save(User.signUp());
+    userSocialAccountRepository.saveAndFlush(account(upper, SocialProvider.APPLE, "AbC"));
+    userSocialAccountRepository.saveAndFlush(account(lower, SocialProvider.APPLE, "abc"));
+    entityManager.clear();
+
+    assertThat(
+            userSocialAccountRepository
+                .findByProviderAndProviderUserId(SocialProvider.APPLE, "abc")
+                .orElseThrow()
+                .getUser()
+                .getId())
+        .isEqualTo(lower.getId());
+    assertThat(
+            userSocialAccountRepository.findByProviderAndProviderUserId(
+                SocialProvider.APPLE, "ABC"))
+        .isEmpty();
+  }
 }

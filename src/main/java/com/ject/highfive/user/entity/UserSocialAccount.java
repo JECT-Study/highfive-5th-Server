@@ -42,8 +42,12 @@ public class UserSocialAccount extends BaseTimeEntity {
   @Column(nullable = false, length = 10)
   private SocialProvider provider;
 
-  // 소셜 ID 토큰의 sub
-  @Column(name = "provider_user_id", nullable = false)
+  // 소셜 ID 토큰의 sub. OIDC 명세상 대소문자를 구분하는 값이라, DB 기본 정렬 규칙(utf8mb4_unicode_ci)
+  // 대신 utf8mb4_bin으로 저장·비교한다 (AbC와 abc가 같은 계정으로 묶이지 않도록, UNIQUE도 같은 기준)
+  @Column(
+      name = "provider_user_id",
+      nullable = false,
+      columnDefinition = "varchar(255) collate utf8mb4_bin")
   private String providerUserId;
 
   // 애플은 이메일을 숨길 수 있고, 카카오는 동의하지 않으면 주지 않는다
