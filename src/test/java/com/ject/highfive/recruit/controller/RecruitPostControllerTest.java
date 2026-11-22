@@ -1,6 +1,9 @@
 package com.ject.highfive.recruit.controller;
 
 import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.hasKey;
+import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -19,9 +22,11 @@ import com.ject.highfive.global.common.response.PageResponse;
 import com.ject.highfive.global.exception.BusinessException;
 import com.ject.highfive.global.security.SecurityConfig;
 import com.ject.highfive.recruit.dto.RecruitPostCreateResponse;
+import com.ject.highfive.recruit.dto.RecruitPostDetailResponse;
 import com.ject.highfive.recruit.dto.RecruitPostSearchRequest;
 import com.ject.highfive.recruit.dto.RecruitPostSummaryResponse;
 import com.ject.highfive.recruit.entity.RecruitPostStatus;
+import com.ject.highfive.recruit.entity.TeamType;
 import com.ject.highfive.recruit.entity.WantedCareerLevel;
 import com.ject.highfive.recruit.exception.RecruitErrorCode;
 import com.ject.highfive.recruit.service.RecruitPostQueryService;
@@ -375,6 +380,101 @@ class RecruitPostControllerTest {
   @DisplayName("숫자가 아닌 page는 400 COMMON_004")
   void searchNonNumericPageRejected() throws Exception {
     getList("?page=abc")
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("COMMON_004"));
+    verifyNoInteractions(recruitPostQueryService);
+  }
+
+  private RecruitPostDetailResponse detailResponse() {
+    RecruitPostDetailResponse.ConcertInfo concert =
+        new RecruitPostDetailResponse.ConcertInfo(
+            12L,
+            "겨울 합동공연",
+            List.of(Genre.ROCK, Genre.INDIE),
+            LocalDate.of(2999, 12, 20),
+            null,
+            null,
+            "홍대 롤링홀",
+            "서울 마포구 어울마당로 35",
+            "SEOUL",
+            500000,
+            null);
+    RecruitPostDetailResponse.TeamInfo host =
+        new RecruitPostDetailResponse.TeamInfo(
+            true,
+            new RecruitPostDetailResponse.BandInfo(3L, "소음공장", null, List.of(Genre.ROCK), 4),
+            List.of());
+    return new RecruitPostDetailResponse(
+        5L,
+        RecruitPostStatus.RECRUITING,
+        LocalDate.of(2999, 12, 1),
+        WantedCareerLevel.Y1_TO_3,
+        List.of(TeamType.FIRST_PERFORMANCE),
+        "12월 홍대에서 함께할 팀을 찾습니다.",
+        0,
+        3,
+        concert,
+        List.of(host),
+        true,
+        false,
+        true);
+  }
+
+  @Test
+  @DisplayName("상세는 경로의 공고 ID와 헤더의 사용자 ID를 넘기고 v0.2 필드 이름 그대로 돌려준다")
+  void detailReturnsFields() throws Exception {
+    given(recruitPostQueryService.getDetail(5L, 7L)).willReturn(detailResponse());
+
+    mockMvc
+        .perform(get(POST_URL).header("X-User-Id", "7"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("COMMON_000"))
+        .andExpect(jsonPath("$.data.recruitPostId").value(5))
+        .andExpect(jsonPath("$.data.status").value("RECRUITING"))
+        .andExpect(jsonPath("$.data.teamTypes[0]").value("FIRST_PERFORMANCE"))
+        .andExpect(jsonPath("$.data.joinedTeamCount").value(0))
+        .andExpect(jsonPath("$.data.recruitTeamCount").value(3))
+        .andExpect(jsonPath("$.data.concert.genres[0]").value("ROCK"))
+        .andExpect(jsonPath("$.data.concert.startTime").value(nullValue()))
+        .andExpect(jsonPath("$.data.teams[0].isHost").value(true))
+        .andExpect(jsonPath("$.data.teams[0].band.bandId").value(3))
+        .andExpect(jsonPath("$.data.teams[0].band.memberCount").value(4))
+        .andExpect(jsonPath("$.data.teams[0].setlist").isEmpty())
+        .andExpect(jsonPath("$.data.isFavorite").value(true))
+        .andExpect(jsonPath("$.data.isMine").value(false))
+        .andExpect(jsonPath("$.data.canInquire").value(true))
+        .andExpect(jsonPath("$.data", not(hasKey("inquiryChatRoomId"))))
+        .andExpect(jsonPath("$.data.concert", not(hasKey("customGenre"))))
+        .andExpect(jsonPath("$.data.teams[0].band", not(hasKey("customGenre"))));
+  }
+
+  @Test
+  @DisplayName("공고가 없으면 404 RECRUIT_001")
+  void detailNotFound() throws Exception {
+    given(recruitPostQueryService.getDetail(5L, 7L))
+        .willThrow(new BusinessException(RecruitErrorCode.RECRUIT_POST_NOT_FOUND));
+
+    mockMvc
+        .perform(get(POST_URL).header("X-User-Id", "7"))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("RECRUIT_001"));
+  }
+
+  @Test
+  @DisplayName("상세에 X-User-Id 헤더가 없으면 400 COMMON_001이고 서비스를 부르지 않는다")
+  void detailWithoutHeader() throws Exception {
+    mockMvc
+        .perform(get(POST_URL))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("COMMON_001"));
+    verifyNoInteractions(recruitPostQueryService);
+  }
+
+  @Test
+  @DisplayName("공고 ID가 숫자가 아니면 400 COMMON_004")
+  void detailNonNumericId() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/recruit-posts/abc").header("X-User-Id", "7"))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("COMMON_004"));
     verifyNoInteractions(recruitPostQueryService);

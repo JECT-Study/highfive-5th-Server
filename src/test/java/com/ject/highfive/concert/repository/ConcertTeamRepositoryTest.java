@@ -30,6 +30,11 @@ class ConcertTeamRepositoryTest {
         ConcertTeam.builder().concert(concert).bandId(bandId).build());
   }
 
+  private ConcertTeam savedTeam(Concert concert, Long bandId, Integer lineupOrder) {
+    return concertTeamRepository.saveAndFlush(
+        ConcertTeam.builder().concert(concert).bandId(bandId).lineupOrder(lineupOrder).build());
+  }
+
   @Test
   @DisplayName("합류 수에서 주최 팀, 나간 팀, 강퇴된 팀, 다른 공연의 팀은 빠진다")
   void countJoinedGuestTeams() {
@@ -73,5 +78,36 @@ class ConcertTeamRepositoryTest {
                     JoinedTeamCount::getConcertId, JoinedTeamCount::getJoinedTeamCount));
 
     assertThat(counts).containsOnly(entry(first.getId(), 2L), entry(second.getId(), 1L));
+  }
+
+  @Test
+  @DisplayName("라인업은 공연의 JOINED 팀만 찾고 나간 팀·강퇴된 팀·다른 공연의 팀은 빠진다")
+  void findLineupJoinedOnly() {
+    Concert concert = savedConcert();
+    // 선언과 사용 사이가 멀어 Checkstyle(VariableDeclarationUsageDistance)을 피하려고 final
+    final ConcertTeam host = savedTeam(concert, ConcertFixture.HOST_BAND_ID, 1);
+    final ConcertTeam guest = savedTeam(concert, 11L, 2);
+    savedTeam(concert, 12L, 3).leave();
+    savedTeam(concert, 13L, 4).kick();
+    savedTeam(savedConcert(), 11L, 1);
+    concertTeamRepository.flush();
+
+    assertThat(concertTeamRepository.findLineup(concert.getId(), ConcertTeamStatus.JOINED))
+        .extracting(ConcertTeam::getId)
+        .containsExactly(host.getId(), guest.getId());
+  }
+
+  @Test
+  @DisplayName("라인업은 순서 번호 오름차순이고, 번호가 없는 팀은 뒤에 저장 순서(id)로 나온다")
+  void findLineupNullsLast() {
+    Concert concert = savedConcert();
+    final ConcertTeam noOrderFirst = savedTeam(concert, 11L);
+    final ConcertTeam second = savedTeam(concert, 12L, 2);
+    final ConcertTeam noOrderSecond = savedTeam(concert, 13L);
+    final ConcertTeam host = savedTeam(concert, ConcertFixture.HOST_BAND_ID, 1);
+
+    assertThat(concertTeamRepository.findLineup(concert.getId(), ConcertTeamStatus.JOINED))
+        .extracting(ConcertTeam::getId)
+        .containsExactly(host.getId(), second.getId(), noOrderFirst.getId(), noOrderSecond.getId());
   }
 }

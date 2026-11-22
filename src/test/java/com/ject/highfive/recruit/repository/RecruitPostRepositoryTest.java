@@ -12,6 +12,7 @@ import com.ject.highfive.support.ConcertFixture;
 import com.ject.highfive.support.MySqlRepositoryTest;
 import java.time.LocalDate;
 import java.util.List;
+import org.hibernate.Hibernate;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -207,5 +208,52 @@ class RecruitPostRepositoryTest {
     assertThat(recruitPostRepository.existsByIdAndDeletedAtIsNull(closed.getId())).isTrue();
     assertThat(recruitPostRepository.existsByIdAndDeletedAtIsNull(deleted.getId())).isFalse();
     assertThat(recruitPostRepository.existsByIdAndDeletedAtIsNull(Long.MAX_VALUE)).isFalse();
+  }
+
+  @Test
+  @DisplayName("상세 조회는 살아 있는 공고를 공연과 함께 읽는다")
+  void findDetailLoadsConcert() {
+    RecruitPost saved =
+        recruitPostRepository.saveAndFlush(newPost(savedConcert(), TeamType.ANYONE));
+    em.clear();
+
+    RecruitPost found =
+        recruitPostRepository
+            .findWithConcertByIdAndDeletedAtIsNullAndConcertDeletedAtIsNull(saved.getId())
+            .orElseThrow();
+
+    assertThat(Hibernate.isInitialized(found.getConcert())).isTrue();
+  }
+
+  @Test
+  @DisplayName("상세 조회는 삭제한 공고를 찾지 않는다")
+  void deletedPostNotFound() {
+    RecruitPost post = recruitPostRepository.saveAndFlush(newPost(savedConcert(), TeamType.ANYONE));
+    post.delete();
+    em.flush();
+    em.clear();
+
+    assertThat(
+            recruitPostRepository.findWithConcertByIdAndDeletedAtIsNullAndConcertDeletedAtIsNull(
+                post.getId()))
+        .isEmpty();
+  }
+
+  @Test
+  @DisplayName("상세 조회는 공연이 삭제된 공고를 찾지 않는다")
+  void concertDeletedPostNotFound() {
+    Concert concert = savedConcert();
+    RecruitPost post = recruitPostRepository.saveAndFlush(newPost(concert, TeamType.ANYONE));
+    // Concert에는 삭제 메서드가 아직 없다(1.6 미구현)
+    em.getEntityManager()
+        .createNativeQuery("update concerts set deleted_at = now() where id = ?")
+        .setParameter(1, concert.getId())
+        .executeUpdate();
+    em.clear();
+
+    assertThat(
+            recruitPostRepository.findWithConcertByIdAndDeletedAtIsNullAndConcertDeletedAtIsNull(
+                post.getId()))
+        .isEmpty();
   }
 }

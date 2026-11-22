@@ -21,6 +21,11 @@ public interface RecruitPostRepository
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   Optional<RecruitPost> findByIdAndDeletedAtIsNull(Long id);
 
+  // 상세(2.7)용이라 락을 걸지 않는다. 공연도 응답에 쓰므로 함께 읽고, 공연이 삭제됐으면 찾지 않는다.
+  // findWith…의 With…는 Spring Data가 무시하는 부분으로, 락 걸린 findByIdAndDeletedAtIsNull과 이름으로 구분한다
+  @EntityGraph(attributePaths = "concert")
+  Optional<RecruitPost> findWithConcertByIdAndDeletedAtIsNullAndConcertDeletedAtIsNull(Long id);
+
   Optional<RecruitPost> findByConcertIdAndDeletedAtIsNull(Long concertId);
 
   // 찜은 공고가 있는지만 잠그지 않고 본다. 배타 잠금으로 읽으면 같은 공고의 찜끼리 줄을 선다 (222 스펙 4.4)
