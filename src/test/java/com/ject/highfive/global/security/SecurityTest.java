@@ -1,5 +1,6 @@
 package com.ject.highfive.global.security;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -11,9 +12,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.jayway.jsonpath.JsonPath;
+import com.ject.highfive.auth.oidc.OidcTokenVerifier;
+import com.ject.highfive.auth.oidc.SocialUserInfo;
 import com.ject.highfive.auth.repository.RefreshTokenRepository;
+import com.ject.highfive.global.exception.AuthErrorCode;
+import com.ject.highfive.global.exception.BusinessException;
 import com.ject.highfive.global.security.jwt.JwtProperties;
 import com.ject.highfive.global.security.jwt.JwtTokenProvider;
+import com.ject.highfive.global.security.jwt.TokenType;
+import com.ject.highfive.user.entity.SocialProvider;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -25,6 +33,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -41,6 +50,8 @@ class SecurityTest {
   @Autowired JwtTokenProvider jwtTokenProvider;
   @Autowired JwtProperties jwtProperties;
   @MockitoBean RefreshTokenRepository refreshTokenRepository;
+  // 소셜 JWKS를 부를 수 없으므로 ID 토큰 검증만 가짜로 두고, 가입·토큰 발급은 실제로 거친다
+  @MockitoBean OidcTokenVerifier oidcTokenVerifier;
 
   private static String bearer(String token) {
     return "Bearer " + token;
@@ -107,6 +118,9 @@ class SecurityTest {
   @Test
   @DisplayName("로그인은 토큰 없이, 잘못된 토큰을 함께 보내도 부를 수 있다")
   void loginIsPublic() throws Exception {
+    given(oidcTokenVerifier.verify(SocialProvider.KAKAO, "social-id-token"))
+        .willReturn(new SocialUserInfo("security-test-kakao-1", null));
+
     mockMvc
         .perform(
             post("/api/v1/auth/login/kakao")
@@ -115,7 +129,91 @@ class SecurityTest {
                 .content("{\"token\":\"social-id-token\"}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data.accessToken").isNotEmpty())
-        .andExpect(jsonPath("$.data.refreshToken").isNotEmpty());
+        .andExpect(jsonPath("$.data.refreshToken").isNotEmpty())
+        .andExpect(jsonPath("$.data.user.status").value("PENDING"))
+        .andExpect(jsonPath("$.data.nextStep").value("TERMS"));
+  }
+
+  @Test
+  @DisplayName("같은 소셜 계정으로 다시 로그인하면 같은 회원이고, 발급한 토큰으로 API를 부를 수 있다")
+  void secondLoginReturnsSameUser() throws Exception {
+    given(oidcTokenVerifier.verify(SocialProvider.GOOGLE, "google-id-token"))
+        .willReturn(new SocialUserInfo("security-test-google-1", "user@example.com"));
+
+    Number firstId = JsonPath.read(login("google", "google-id-token"), "$.data.user.id");
+    String second = login("google", "google-id-token");
+    Number secondId = JsonPath.read(second, "$.data.user.id");
+    String accessToken = JsonPath.read(second, "$.data.accessToken");
+
+    assertThat(secondId.longValue()).isEqualTo(firstId.longValue());
+    assertThat(jwtTokenProvider.parse(accessToken, TokenType.ACCESS))
+        .isEqualTo(firstId.longValue());
+    mockMvc
+        .perform(get(PROTECTED_URL).header(HttpHeaders.AUTHORIZATION, bearer(accessToken)))
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  @DisplayName("지원하지 않는 소셜은 400 AUTH_007, 소셜 토큰 검증 실패는 401 AUTH_006")
+  void loginErrors() throws Exception {
+    given(oidcTokenVerifier.verify(SocialProvider.KAKAO, "bad-token"))
+        .willThrow(new BusinessException(AuthErrorCode.SOCIAL_TOKEN_INVALID));
+
+    mockMvc
+        .perform(
+            post("/api/v1/auth/login/naver")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"token\":\"any\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("AUTH_007"));
+    mockMvc
+        .perform(
+            post("/api/v1/auth/login/kakao")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"token\":\"bad-token\"}"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value("AUTH_006"));
+  }
+
+  @Test
+  @DisplayName("같은 이메일이어도 소셜이 다르면 다른 회원으로 가입한다")
+  void sameEmailWithDifferentProviderIsAnotherUser() throws Exception {
+    given(oidcTokenVerifier.verify(SocialProvider.KAKAO, "kakao-same-email"))
+        .willReturn(new SocialUserInfo("security-test-kakao-same-email", "same@example.com"));
+    given(oidcTokenVerifier.verify(SocialProvider.GOOGLE, "google-same-email"))
+        .willReturn(new SocialUserInfo("security-test-google-same-email", "same@example.com"));
+
+    Number kakaoUserId = JsonPath.read(login("kakao", "kakao-same-email"), "$.data.user.id");
+    Number googleUserId = JsonPath.read(login("google", "google-same-email"), "$.data.user.id");
+
+    assertThat(googleUserId.longValue()).isNotEqualTo(kakaoUserId.longValue());
+  }
+
+  @Test
+  @DisplayName("소셜 JWKS 장애는 로그인 실패(AUTH_006)가 아니라 500 COMMON_005")
+  void jwksOutageIsServerError() throws Exception {
+    given(oidcTokenVerifier.verify(SocialProvider.KAKAO, "any-token"))
+        .willThrow(new JwtException("JWKS 서버에 연결할 수 없음"));
+
+    mockMvc
+        .perform(
+            post("/api/v1/auth/login/kakao")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"token\":\"any-token\"}"))
+        .andExpect(status().isInternalServerError())
+        .andExpect(jsonPath("$.code").value("COMMON_005"));
+  }
+
+  private String login(String provider, String idToken) throws Exception {
+    return mockMvc
+        .perform(
+            post("/api/v1/auth/login/" + provider)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"token\":\"" + idToken + "\"}"))
+        .andExpect(status().isOk())
+        .andReturn()
+        .getResponse()
+        .getContentAsString();
   }
 
   @Test
