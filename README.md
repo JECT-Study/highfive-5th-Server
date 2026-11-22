@@ -72,6 +72,8 @@ dev 서버(EC2)는 GitHub Actions → ECR → CodeDeploy로 배포합니다. 배
 
 헬스 체크는 `/actuator/health`를 씁니다.
 
+기존 DB에 JECT-212를 배포할 때는 [소셜 ID 마이그레이션](deploy/migrations/JECT-212-provider-user-id-collation.sql)의 사전 점검 후 필요하면 SQL을 수동으로 적용합니다.
+
 ## PR 전에
 
 ```bash
