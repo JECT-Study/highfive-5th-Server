@@ -5,9 +5,8 @@ import com.ject.highfive.auth.dto.LoginResponse;
 import com.ject.highfive.auth.dto.TokenRefreshRequest;
 import com.ject.highfive.auth.dto.TokenResponse;
 import com.ject.highfive.auth.service.AuthService;
+import com.ject.highfive.auth.service.SocialLoginService;
 import com.ject.highfive.global.common.response.ApiResponse;
-import com.ject.highfive.user.dto.NextStep;
-import com.ject.highfive.user.entity.UserStatus;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -29,17 +28,15 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/auth")
 public class AuthController {
 
-  // TODO: 소셜 ID 토큰 검증과 회원 가입을 붙이면 실제 사용자로 바꾼다 (JECT-212)
-  private static final Long MOCK_LOGIN_USER_ID = 1L;
-
   private final AuthService authService;
+  private final SocialLoginService socialLoginService;
 
   @Operation(
       summary = "소셜 로그인",
       description =
           "앱 SDK로 받은 소셜 ID 토큰을 검증하고 서비스 토큰을 발급한다. 처음이면 가입(PENDING)까지 처리한다.\n\n"
               + "에러: AUTH_006(소셜 토큰 검증 실패), AUTH_007(지원하지 않는 provider), COMMON_004\n\n"
-              + "**임시: 소셜 토큰을 검증하지 않고 항상 1번 사용자로 실제 서비스 토큰을 발급한다 (JECT-212에서 교체)**")
+              + "nextStep은 약관·프로필·밴드 기능이 붙기 전까지 가입 중(PENDING)이면 TERMS, 가입을 끝냈으면 BAND_START")
   @SecurityRequirements
   @PostMapping("/login/{provider}")
   public ApiResponse<LoginResponse> login(
@@ -49,14 +46,7 @@ public class AuthController {
           @PathVariable
           String provider,
       @RequestBody @Valid LoginRequest request) {
-    TokenResponse tokens = authService.issueTokens(MOCK_LOGIN_USER_ID);
-    LoginResponse response =
-        new LoginResponse(
-            tokens.accessToken(),
-            tokens.refreshToken(),
-            new LoginResponse.LoginUser(MOCK_LOGIN_USER_ID, UserStatus.PENDING, null),
-            NextStep.TERMS);
-    return ApiResponse.success(response);
+    return ApiResponse.success(socialLoginService.login(provider, request.token()));
   }
 
   @Operation(

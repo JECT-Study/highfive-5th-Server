@@ -35,3 +35,24 @@ jwt:
   secret: ${JWT_SECRET}
   access-token-expiry: 30m
   refresh-token-expiry: 14d
+
+# 소셜 OIDC ID 토큰 검증. audiences(앱 키·클라이언트 ID·번들 ID)가 비어 있는 소셜은 로그인할 수 없다
+# 환경변수에 쉼표로 여러 값을 넣을 수 있다 (예: 카카오 Default·Dev 네이티브 앱 키)
+oidc:
+  providers:
+    kakao:
+      jwk-set-uri: https://kauth.kakao.com/.well-known/jwks.json
+      issuers:
+        - https://kauth.kakao.com
+      audiences: ${OIDC_KAKAO_AUDIENCE:}
+    google:
+      jwk-set-uri: https://www.googleapis.com/oauth2/v3/certs
+      issuers:
+        - accounts.google.com
+        - https://accounts.google.com
+      audiences: ${OIDC_GOOGLE_AUDIENCE:}
+    apple:
+      jwk-set-uri: https://appleid.apple.com/auth/keys
+      issuers:
+        - https://appleid.apple.com
+      audiences: ${OIDC_APPLE_AUDIENCE:}
