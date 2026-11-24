@@ -1,8 +1,11 @@
 package com.ject.highfive.global.config;
 
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasKey;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -157,5 +160,34 @@ class ApiDocsTest {
         .perform(get("/v3/api-docs"))
         .andExpect(jsonPath("$.paths['/test/created'].post.responses['201']").exists())
         .andExpect(jsonPath("$.paths['/test/created'].post.responses['200']").doesNotExist());
+  }
+
+  @Test
+  @DisplayName("프로필 저장: 장르·포지션이 비었거나 닉네임에 특수문자가 있으면 COMMON 004")
+  void profileValidatesArraysAndNickname() throws Exception {
+    mockMvc
+        .perform(
+            put("/api/v1/users/me/profile")
+                .header(HttpHeaders.AUTHORIZATION, bearerToken())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"nickname\":\"두현!\",\"genreCodes\":[],\"positionCodes\":[\" \"]}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("COMMON_004"))
+        .andExpect(
+            jsonPath("$.errors[*].field")
+                .value(containsInAnyOrder("nickname", "genreCodes", "positionCodes[0]")));
+  }
+
+  @Test
+  @DisplayName("코드 목록에 장르 기타(ETC)와 포지션 직접입력(CUSTOM)이 있다")
+  void codesIncludeCustomInputOptions() throws Exception {
+    mockMvc
+        .perform(
+            get("/api/v1/codes")
+                .header(HttpHeaders.AUTHORIZATION, bearerToken())
+                .param("types", "GENRE,POSITION"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.GENRE[*].code").value(hasItem("ETC")))
+        .andExpect(jsonPath("$.data.POSITION[*].code").value(hasItem("CUSTOM")));
   }
 }
