@@ -70,8 +70,23 @@ dev 서버(EC2)는 GitHub Actions → ECR → CodeDeploy로 배포합니다. `de
 | `deploy/appspec.yml`, `deploy/scripts/` | CodeDeploy가 실행하는 배포·헬스 체크 스크립트 |
 | `.github/workflows/deploy-dev.yml` | develop push 시 빌드·ECR push·CodeDeploy 배포. 레포 변수 `AWS_ROLE_ARN`, `ECR_REPOSITORY`, `DEPLOY_BUCKET` 필요 |
 | `deploy/.env.example` | dev 서버의 `/home/ubuntu/config/.env`에 둘 변수 목록 |
+| `deploy/nginx/` | 서버에 직접 설치하는 Nginx 설정(`highfive.conf`)과 적용 스크립트(`setup.sh`) |
 
-헬스 체크는 `/actuator/health`를 씁니다.
+헬스 체크는 `/actuator/health`를 씁니다. 이 경로는 서버 안에서만 쓰고, Nginx가 밖에서는 막습니다.
+
+### Nginx · HTTPS (dev 서버)
+
+Nginx는 컨테이너가 아니라 서버에 직접 설치하고, 80번으로 받아 앱(`127.0.0.1:8080`)으로 넘깁니다. 배포(CodeDeploy)는 앱 컨테이너만 다시 만들기 때문에 Nginx는 배포와 따로 유지됩니다. 설정은 서버에서 한 번 적용합니다. 배포가 `/home/ubuntu/app`에 파일을 풀어 두므로 거기서 실행합니다.
+
+```bash
+# HTTP만 (http://<서버 IP>로 접속)
+sudo bash /home/ubuntu/app/nginx/setup.sh
+
+# 도메인 연결 + HTTPS (DNS에 도메인 → 서버 IP A 레코드가 먼저 있어야 함)
+sudo CERTBOT_EMAIL=이메일 bash /home/ubuntu/app/nginx/setup.sh dev-api.example.com
+```
+
+같은 명령을 다시 실행해도 됩니다. 설정 파일을 고쳤다면 배포가 끝난 뒤 다시 실행해 적용합니다. 인증서 갱신은 certbot 타이머가 자동으로 합니다.
 
 ## PR 전에
 
