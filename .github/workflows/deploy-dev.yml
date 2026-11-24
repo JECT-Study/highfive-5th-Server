@@ -51,8 +51,8 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
         run: |
-          if aws ecr describe-images --repository-name "$ECR_REPOSITORY" \
-            --image-ids imageTag="$IMAGE_TAG" > /dev/null 2>&1; then
+          # 역할에 ecr:DescribeImages가 없어서, BatchGetImage 권한으로 되는 manifest 조회로 확인한다
+          if docker manifest inspect "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" > /dev/null 2>&1; then
             echo "이미 있는 이미지라 푸시를 건너뜁니다: $IMAGE_TAG"
           else
             docker build -t "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" .
