@@ -10,6 +10,9 @@ spring:
   data:
     redis:
       host: ${REDIS_HOST:localhost}
+  # 로컬은 Hibernate가 엔티티대로 테이블을 고친다(update). 마이그레이션 검증은 MySQL 테스트(CI)가 한다
+  flyway:
+    enabled: false
   jpa:
     hibernate:
       ddl-auto: update

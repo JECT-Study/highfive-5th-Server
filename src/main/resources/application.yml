@@ -27,8 +27,14 @@ spring:
     redis:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT:6379}
+  # 스키마는 Flyway 마이그레이션(classpath:db/migration)이 만들고, Hibernate는 엔티티와 맞는지만 확인한다
+  # 엔티티를 바꾸면 V{번호}__{설명}.sql을 추가한다 (결정 BE-DEC-69). 로컬만 application-local.yml에서 update
+  flyway:
+    enabled: true
   jpa:
     open-in-view: false
+    hibernate:
+      ddl-auto: validate
 
 # 서비스 자체 JWT. 서명 키는 Base64로 인코딩한 32바이트 이상의 값 (openssl rand -base64 32)
 jwt:
