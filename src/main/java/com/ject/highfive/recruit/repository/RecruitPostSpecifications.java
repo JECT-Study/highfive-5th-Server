@@ -74,6 +74,8 @@ public final class RecruitPostSpecifications {
             cb.equal(root.get("wantedCareerLevel"), WantedCareerLevel.ANY));
   }
 
+  // 지역 코드(SEOUL)로는 "마포" 같은 검색어가 잡히지 않아 주소에서 찾는다 (225 스펙 4.5).
+  // 주소가 null이면 LIKE가 참이 아니어서 제목으로만 걸린다
   static Specification<RecruitPost> keywordContains(String keyword) {
     if (keyword == null || keyword.isBlank()) {
       return null;
@@ -82,7 +84,7 @@ public final class RecruitPostSpecifications {
     return (root, query, cb) ->
         cb.or(
             cb.like(root.get("concert").get("title"), pattern, LIKE_ESCAPE),
-            cb.like(root.get("description"), pattern, LIKE_ESCAPE));
+            cb.like(root.get("concert").get("address"), pattern, LIKE_ESCAPE));
   }
 
   private static String escapeLike(String value) {

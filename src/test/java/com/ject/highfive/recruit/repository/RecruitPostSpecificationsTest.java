@@ -42,6 +42,20 @@ class RecruitPostSpecificationsTest {
             .build());
   }
 
+  private Concert concertAt(String title, String address) {
+    return concertRepository.saveAndFlush(
+        Concert.builder()
+            .hostBandId(3L)
+            .createdBy(1L)
+            .title(title)
+            .recruitTeamCount(3)
+            .performDate(LocalDate.of(2999, 12, 20))
+            .region("SEOUL")
+            .address(address)
+            .genres(List.of(Genre.ROCK))
+            .build());
+  }
+
   private RecruitPost post(Concert concert, WantedCareerLevel level, String description) {
     return recruitPostRepository.saveAndFlush(
         RecruitPost.builder()
@@ -145,15 +159,29 @@ class RecruitPostSpecificationsTest {
   }
 
   @Test
-  @DisplayName("키워드는 공연 제목이나 공고 소개에 들어 있으면 찾고, 앞뒤 공백은 무시한다")
-  void keywordMatchesTitleOrDescription() {
-    RecruitPost inTitle = post(concert("홍대 겨울 공연", "SEOUL", Genre.ROCK));
-    RecruitPost inDescription =
-        post(concert("겨울 공연", "SEOUL", Genre.ROCK), WantedCareerLevel.ANY, "홍대에서 만나요");
-    post(concert("부산 공연", "BUSAN", Genre.ROCK));
+  @DisplayName("키워드는 공연 제목이나 공연 주소에 들어 있으면 찾고, 앞뒤 공백은 무시한다")
+  void keywordMatchesTitleOrAddress() {
+    RecruitPost inTitle = post(concertAt("마포 겨울 공연", "서울 종로구 대학로 1"));
+    RecruitPost inAddress = post(concertAt("겨울 공연", "서울 마포구 어울마당로 35"));
+    post(concertAt("부산 공연", "부산 해운대구 1"));
 
-    assertThat(ids(null, null, null, "  홍대 "))
-        .containsExactly(inDescription.getId(), inTitle.getId());
+    assertThat(ids(null, null, null, "  마포 ")).containsExactly(inAddress.getId(), inTitle.getId());
+  }
+
+  @Test
+  @DisplayName("공고 소개에만 키워드가 있으면 찾지 않는다")
+  void keywordIgnoresDescription() {
+    post(concertAt("겨울 공연", "서울 종로구 대학로 1"), WantedCareerLevel.ANY, "마포에서 만나요");
+
+    assertThat(ids(null, null, null, "마포")).isEmpty();
+  }
+
+  @Test
+  @DisplayName("주소가 없는 공연도 제목에 키워드가 있으면 찾는다")
+  void keywordMatchesTitleWhenAddressNull() {
+    RecruitPost noAddress = post(concertAt("마포 공연", null));
+
+    assertThat(ids(null, null, null, "마포")).containsExactly(noAddress.getId());
   }
 
   @Test
