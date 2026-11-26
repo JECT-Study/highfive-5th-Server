@@ -41,12 +41,13 @@ class CurrentTermsTest {
   @DisplayName("code별로 시행일이 가장 늦은 버전을 고르고, 시행일이 같으면 나중에 추가한 행(ID 큰 것)")
   void picksLatestPerCodeWithIdTieBreak() {
     given(termRepository.findAllByEffectiveAtLessThanEqual(NOW))
+        // 조회 순서와 상관없이 골라야 하므로 정답(2·4)을 일부러 앞에 둔다 ("마지막 원소" 같은 실수 방지)
         .willReturn(
             List.of(
-                term(1, "SERVICE", true, NOW.minusDays(30)),
                 term(2, "SERVICE", true, NOW.minusDays(1)),
-                term(3, "PRIVACY", true, NOW.minusDays(1)),
-                term(4, "PRIVACY", true, NOW.minusDays(1))));
+                term(1, "SERVICE", true, NOW.minusDays(30)),
+                term(4, "PRIVACY", true, NOW.minusDays(1)),
+                term(3, "PRIVACY", true, NOW.minusDays(1))));
 
     assertThat(currentTerms.find()).extracting(Term::getId).containsExactly(2L, 4L);
   }
