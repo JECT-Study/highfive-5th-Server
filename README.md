@@ -61,14 +61,14 @@ DB_PASSWORD=내_비밀번호
 
 ## 배포 (dev 서버)
 
-dev 서버(EC2)는 GitHub Actions → ECR → CodeDeploy로 배포합니다. `develop`에 push되면 `.github/workflows/deploy-dev.yml`이 이미지를 빌드해 ECR에 올리고(태그는 커밋 SHA) CodeDeploy로 배포합니다. 레포 변수 `AWS_ROLE_ARN`이 없으면 배포를 건너뜁니다. 수동 실행은 Actions 탭의 `Deploy dev`에서 합니다.
+dev 서버(EC2)는 GitHub Actions → ECR → CodeDeploy로 배포합니다. `develop`에 push되면 CI(`./gradlew check`)가 먼저 돌고, **CI가 성공한 뒤에만** `.github/workflows/deploy-dev.yml`이 이미지를 빌드해 ECR에 올리고(태그는 커밋 SHA) CodeDeploy로 배포합니다. CI가 실패하면 배포하지 않습니다. 배포 시작 시점에 `develop` 맨 끝이 아닌 커밋은 건너뜁니다. 레포 변수 `AWS_ROLE_ARN`이 없으면 배포를 건너뜁니다. 수동 실행은 Actions 탭의 `Deploy dev`에서 하며, 이 경로는 CI를 거치지 않습니다.
 
 | 파일 | 용도 |
 | --- | --- |
 | `Dockerfile` | 배포 이미지. `docker build -t highfive-api .`로 로컬에서도 빌드할 수 있다 |
 | `deploy/compose.yaml` | dev 서버에서 앱·MySQL·Redis를 띄운다 |
 | `deploy/appspec.yml`, `deploy/scripts/` | CodeDeploy가 실행하는 배포·헬스 체크 스크립트 |
-| `.github/workflows/deploy-dev.yml` | develop push 시 빌드·ECR push·CodeDeploy 배포. 레포 변수 `AWS_ROLE_ARN`, `ECR_REPOSITORY`, `DEPLOY_BUCKET` 필요 |
+| `.github/workflows/deploy-dev.yml` | develop CI 성공 후 빌드·ECR push·CodeDeploy 배포. 레포 변수 `AWS_ROLE_ARN`, `ECR_REPOSITORY`, `DEPLOY_BUCKET` 필요 |
 | `deploy/.env.example` | dev 서버의 `/home/ubuntu/config/.env`에 둘 변수 목록 |
 | `deploy/nginx/` | 서버에 직접 설치하는 Nginx 설정(`highfive.conf`)과 적용 스크립트(`setup.sh`) |
 
