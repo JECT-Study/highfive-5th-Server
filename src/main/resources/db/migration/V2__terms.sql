@@ -29,7 +29,9 @@ create table user_term_agreements (
     constraint fk_user_term_agreements_term foreign key (term_id) references terms (id)
 ) engine=InnoDB default charset=utf8mb4 collate=utf8mb4_unicode_ci;
 
--- 회원 가입 필수 약관 3개 (결정 #34). 마케팅(선택)은 결정 #82(PM 확인) 후 추가한다.
+-- 회원 가입 약관은 필수 3개뿐이다 (결정 #34). 마케팅 수신 동의는 받지 않아 선택 약관이 없고,
+-- 나중에 광고성 정보를 보내게 되면 그때 선택 약관 행을 새 마이그레이션으로 추가한다 (is_required = 0).
+-- content_url은 공개 페이지(Notion)를 만든 뒤 새 마이그레이션으로 채운다 (결정 #35)
 -- 약관 문서의 시행일은 2026-12-01이지만, dev에서 바로 온보딩을 쓰도록 첫 버전은 2026-11-01부터 시행으로 둔다
 insert into terms (code, version, title, is_required, content_url, effective_at) values
     ('SERVICE',     '1.0', '서비스 이용약관',          1, null, '2026-11-01 00:00:00'),
