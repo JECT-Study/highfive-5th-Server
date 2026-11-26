@@ -1,13 +1,17 @@
-# develop에 push되면 dev 서버(EC2)에 배포한다
+# develop의 CI(./gradlew check)가 성공한 커밋만 dev 서버(EC2)에 배포한다
 # 이미지 빌드 → ECR push(태그 = 커밋 SHA) → 배포 묶음 S3 업로드 → CodeDeploy 배포 → 완료까지 대기
-# 테스트·포맷 검사는 ci.yml이 같은 push에서 따로 돌린다
+# 배포 대상은 CI가 돌았던 커밋(workflow_run.head_sha)이다. 그 사이 새로 머지된 커밋은 섞이지 않는다
+# 배포 시작 시점에 develop 맨 끝이 아닌 커밋은 건너뛴다 (더 새 커밋의 CI가 끝나면 그쪽이 배포된다)
 # AWS 접속은 액세스 키 없이 GitHub OIDC로 역할(highfive-github-actions)을 받는다
 # 레포 변수(Settings → Secrets and variables → Actions → Variables): AWS_ROLE_ARN, ECR_REPOSITORY, DEPLOY_BUCKET
 # AWS_ROLE_ARN이 없으면 배포를 건너뛴다
+# 수동 실행(workflow_dispatch)은 CI를 거치지 않는다. develop 브랜치에서 직접 눌러 쓰는 비상용이다
 name: Deploy dev
 
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [develop]
   workflow_dispatch:
 
@@ -26,16 +30,50 @@ env:
   CODEDEPLOY_GROUP: dev
 
 jobs:
+  # 배포할지 판단한다: 변수가 있고, (수동 실행이거나 develop push로 돈 CI가 성공했고 그 커밋이 develop 맨 끝일 때)
+  gate:
+    if: >-
+      vars.AWS_ROLE_ARN != '' && (
+        github.event_name == 'workflow_dispatch' ||
+        (github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion == 'success'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      deploy: ${{ steps.latest.outputs.deploy }}
+    steps:
+      - name: develop 맨 끝 커밋인지 확인
+        id: latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [[ "$EVENT" == "workflow_dispatch" ]]; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          tip=$(gh api "repos/$GITHUB_REPOSITORY/commits/develop" --jq .sha)
+          if [[ "$tip" == "$TARGET_SHA" ]]; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "develop 맨 끝($tip)이 아니라서 배포를 건너뜁니다: $TARGET_SHA"
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+          fi
+
   deploy:
-    if: vars.AWS_ROLE_ARN != ''
+    needs: gate
+    if: needs.gate.outputs.deploy == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
       ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
       DEPLOY_BUCKET: ${{ vars.DEPLOY_BUCKET }}
-      IMAGE_TAG: ${{ github.sha }}
+      IMAGE_TAG: ${{ github.event.workflow_run.head_sha || github.sha }}
     steps:
+      # workflow_run은 기본 브랜치 최신 커밋을 기준으로 돌아서, CI가 검사한 커밋을 직접 받는다
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -73,7 +111,7 @@ jobs:
             --application-name "$CODEDEPLOY_APPLICATION" \
             --deployment-group-name "$CODEDEPLOY_GROUP" \
             --s3-location "bucket=$DEPLOY_BUCKET,key=highfive-api/dev/$IMAGE_TAG.zip,bundleType=zip" \
-            --description "$GITHUB_SHA" \
+            --description "$IMAGE_TAG" \
             --query deploymentId --output text)
           echo "배포 시작: $deployment_id"
           echo "### 배포 $deployment_id" >> "$GITHUB_STEP_SUMMARY"
