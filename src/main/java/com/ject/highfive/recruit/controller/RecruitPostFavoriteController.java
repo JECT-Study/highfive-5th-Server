@@ -7,10 +7,10 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -26,30 +26,22 @@ public class RecruitPostFavoriteController {
       summary = "공고 찜",
       description =
           "공고를 찜한다. 이미 찜했어도 성공한다. 마감된 공고도 찜할 수 있다.\n\n"
-              + "에러: COMMON_004(숫자가 아닌 공고 ID), RECRUIT_001(공고 없음, 삭제 포함)\n\n"
-              + "**임시: `X-User-Id` 헤더 필수 (로그인 연동 전)**")
+              + "에러: COMMON_004(숫자가 아닌 공고 ID), RECRUIT_001(공고 없음, 삭제 포함)")
   @PutMapping
   public ApiResponse<Map<String, Object>> favorite(
       @Parameter(description = "모집 공고 ID") @PathVariable Long recruitPostId,
-      // TODO: JECT-249 로그인 연동(JECT-211) 후 로그인 사용자로 바꾼다
-      @Parameter(description = "임시: 로그인 연동 전 사용자 ID", example = "1") @RequestHeader("X-User-Id")
-          Long userId) {
+      @AuthenticationPrincipal Long userId) {
     favoriteService.favorite(recruitPostId, userId);
     return ApiResponse.success();
   }
 
   @Operation(
       summary = "공고 찜 해제",
-      description =
-          "공고 찜을 해제한다. 찜하지 않았거나 삭제된 공고여도 성공한다.\n\n"
-              + "에러: COMMON_004(숫자가 아닌 공고 ID)\n\n"
-              + "**임시: `X-User-Id` 헤더 필수 (로그인 연동 전)**")
+      description = "공고 찜을 해제한다. 찜하지 않았거나 삭제된 공고여도 성공한다.\n\n" + "에러: COMMON_004(숫자가 아닌 공고 ID)")
   @DeleteMapping
   public ApiResponse<Map<String, Object>> unfavorite(
       @Parameter(description = "모집 공고 ID") @PathVariable Long recruitPostId,
-      // TODO: JECT-249 로그인 연동(JECT-211) 후 로그인 사용자로 바꾼다
-      @Parameter(description = "임시: 로그인 연동 전 사용자 ID", example = "1") @RequestHeader("X-User-Id")
-          Long userId) {
+      @AuthenticationPrincipal Long userId) {
     favoriteService.unfavorite(recruitPostId, userId);
     return ApiResponse.success();
   }

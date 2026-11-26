@@ -10,33 +10,37 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.ject.highfive.global.exception.BusinessException;
 import com.ject.highfive.global.security.SecurityConfig;
+import com.ject.highfive.global.security.jwt.JwtTokenProvider;
 import com.ject.highfive.recruit.exception.RecruitErrorCode;
 import com.ject.highfive.recruit.service.RecruitPostFavoriteService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(controllers = RecruitPostFavoriteController.class)
 @Import(SecurityConfig.class)
-// TODO: JECT-249 로그인 사용자로 바꾸면 필터를 켜고 토큰으로 호출한다 (지금은 X-User-Id 헤더로 받음)
-@AutoConfigureMockMvc(addFilters = false)
 class RecruitPostFavoriteControllerTest {
 
   private static final String URL = "/api/v1/recruit-posts/5/favorite";
 
   @Autowired MockMvc mockMvc;
+  @Autowired JwtTokenProvider jwtTokenProvider;
   @MockitoBean RecruitPostFavoriteService favoriteService;
 
+  private String bearer() {
+    return "Bearer " + jwtTokenProvider.createAccessToken(7L);
+  }
+
   @Test
-  @DisplayName("찜에 성공하면 200과 빈 data를 돌려주고, 경로의 공고 ID와 헤더의 사용자 ID를 넘긴다")
+  @DisplayName("찜에 성공하면 200과 빈 data를 돌려주고, 경로의 공고 ID와 토큰의 사용자 ID를 넘긴다")
   void favoriteReturns200() throws Exception {
     mockMvc
-        .perform(put(URL).header("X-User-Id", "7"))
+        .perform(put(URL).header(HttpHeaders.AUTHORIZATION, bearer()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.status").value(200))
         .andExpect(jsonPath("$.code").value("COMMON_000"))
@@ -53,7 +57,7 @@ class RecruitPostFavoriteControllerTest {
         .favorite(5L, 7L);
 
     mockMvc
-        .perform(put(URL).header("X-User-Id", "7"))
+        .perform(put(URL).header(HttpHeaders.AUTHORIZATION, bearer()))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.status").value(404))
         .andExpect(jsonPath("$.code").value("RECRUIT_001"));
@@ -63,7 +67,7 @@ class RecruitPostFavoriteControllerTest {
   @DisplayName("찜 해제에 성공하면 200과 빈 data를 돌려준다")
   void unfavoriteReturns200() throws Exception {
     mockMvc
-        .perform(delete(URL).header("X-User-Id", "7"))
+        .perform(delete(URL).header(HttpHeaders.AUTHORIZATION, bearer()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.status").value(200))
         .andExpect(jsonPath("$.data").isEmpty());
@@ -74,9 +78,20 @@ class RecruitPostFavoriteControllerTest {
   @DisplayName("공고 ID가 숫자가 아니면 400 COMMON_004이고 서비스를 부르지 않는다")
   void nonNumericIdReturns400() throws Exception {
     mockMvc
-        .perform(put("/api/v1/recruit-posts/abc/favorite").header("X-User-Id", "7"))
+        .perform(
+            put("/api/v1/recruit-posts/abc/favorite").header(HttpHeaders.AUTHORIZATION, bearer()))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("COMMON_004"));
+    verifyNoInteractions(favoriteService);
+  }
+
+  @Test
+  @DisplayName("토큰 없이 부르면 401 AUTH_001이고 서비스를 부르지 않는다")
+  void withoutTokenIsUnauthorized() throws Exception {
+    mockMvc
+        .perform(put(URL))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value("AUTH_001"));
     verifyNoInteractions(favoriteService);
   }
 }
