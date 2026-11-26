@@ -21,6 +21,7 @@ import com.ject.highfive.concert.entity.Genre;
 import com.ject.highfive.global.common.response.PageResponse;
 import com.ject.highfive.global.exception.BusinessException;
 import com.ject.highfive.global.security.SecurityConfig;
+import com.ject.highfive.global.security.jwt.JwtTokenProvider;
 import com.ject.highfive.recruit.dto.RecruitPostCreateResponse;
 import com.ject.highfive.recruit.dto.RecruitPostDetailResponse;
 import com.ject.highfive.recruit.dto.RecruitPostSearchRequest;
@@ -36,9 +37,9 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -46,8 +47,6 @@ import org.springframework.test.web.servlet.ResultActions;
 
 @WebMvcTest(controllers = RecruitPostController.class)
 @Import(SecurityConfig.class)
-// TODO: JECT-249 로그인 사용자로 바꾸면 필터를 켜고 토큰으로 호출한다 (지금은 X-User-Id 헤더로 받음)
-@AutoConfigureMockMvc(addFilters = false)
 class RecruitPostControllerTest {
 
   private static final String URL = "/api/v1/concerts/12/recruit-posts";
@@ -63,12 +62,20 @@ class RecruitPostControllerTest {
       """;
 
   @Autowired MockMvc mockMvc;
+  @Autowired JwtTokenProvider jwtTokenProvider;
   @MockitoBean RecruitPostService recruitPostService;
   @MockitoBean RecruitPostQueryService recruitPostQueryService;
 
+  private String bearer() {
+    return "Bearer " + jwtTokenProvider.createAccessToken(7L);
+  }
+
   private ResultActions postRecruit(String body) throws Exception {
     return mockMvc.perform(
-        post(URL).header("X-User-Id", "7").contentType(MediaType.APPLICATION_JSON).content(body));
+        post(URL)
+            .header(HttpHeaders.AUTHORIZATION, bearer())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(body));
   }
 
   @Test
@@ -154,20 +161,6 @@ class RecruitPostControllerTest {
   }
 
   @Test
-  @DisplayName("X-User-Id가 숫자가 아니면 500이 아니라 400 COMMON_004")
-  void nonNumericUserIdHeaderIsBadRequest() throws Exception {
-    mockMvc
-        .perform(
-            post(URL)
-                .header("X-User-Id", "abc")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(VALID_BODY))
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.code").value("COMMON_004"));
-    verifyNoInteractions(recruitPostService);
-  }
-
-  @Test
   @DisplayName("서비스의 업무 오류는 그 코드와 상태로 내려간다")
   void businessErrorPassesThrough() throws Exception {
     given(recruitPostService.create(eq(12L), eq(7L), any()))
@@ -181,11 +174,14 @@ class RecruitPostControllerTest {
 
   private ResultActions putRecruit(String url, String body) throws Exception {
     return mockMvc.perform(
-        put(url).header("X-User-Id", "7").contentType(MediaType.APPLICATION_JSON).content(body));
+        put(url)
+            .header(HttpHeaders.AUTHORIZATION, bearer())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(body));
   }
 
   @Test
-  @DisplayName("수정에 성공하면 200과 빈 data를 돌려주고, 경로의 공고 ID와 헤더의 사용자 ID를 넘긴다")
+  @DisplayName("수정에 성공하면 200과 빈 data를 돌려주고, 경로의 공고 ID와 토큰의 사용자 ID를 넘긴다")
   void updateReturns200() throws Exception {
     putRecruit(POST_URL, VALID_BODY)
         .andExpect(status().isOk())
@@ -223,7 +219,7 @@ class RecruitPostControllerTest {
   @DisplayName("마감에 성공하면 200과 빈 data를 돌려준다")
   void closeReturns200() throws Exception {
     mockMvc
-        .perform(post(POST_URL + "/close").header("X-User-Id", "7"))
+        .perform(post(POST_URL + "/close").header(HttpHeaders.AUTHORIZATION, bearer()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.status").value(200))
         .andExpect(jsonPath("$.data").isEmpty());
@@ -238,7 +234,7 @@ class RecruitPostControllerTest {
         .close(5L, 7L);
 
     mockMvc
-        .perform(post(POST_URL + "/close").header("X-User-Id", "7"))
+        .perform(post(POST_URL + "/close").header(HttpHeaders.AUTHORIZATION, bearer()))
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.status").value(409))
         .andExpect(jsonPath("$.code").value("RECRUIT_004"));
@@ -248,7 +244,7 @@ class RecruitPostControllerTest {
   @DisplayName("삭제에 성공하면 200과 빈 data를 돌려준다")
   void deleteReturns200() throws Exception {
     mockMvc
-        .perform(delete(POST_URL).header("X-User-Id", "7"))
+        .perform(delete(POST_URL).header(HttpHeaders.AUTHORIZATION, bearer()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.status").value(200))
         .andExpect(jsonPath("$.data").isEmpty());
@@ -263,7 +259,7 @@ class RecruitPostControllerTest {
         .delete(5L, 7L);
 
     mockMvc
-        .perform(delete(POST_URL).header("X-User-Id", "7"))
+        .perform(delete(POST_URL).header(HttpHeaders.AUTHORIZATION, bearer()))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.status").value(404))
         .andExpect(jsonPath("$.code").value("RECRUIT_001"));
@@ -274,7 +270,7 @@ class RecruitPostControllerTest {
       new RecruitPostSearchRequest(null, null, null, null);
 
   private ResultActions getList(String query) throws Exception {
-    return mockMvc.perform(get(LIST_URL + query).header("X-User-Id", "7"));
+    return mockMvc.perform(get(LIST_URL + query).header(HttpHeaders.AUTHORIZATION, bearer()));
   }
 
   private PageResponse<RecruitPostSummaryResponse> onePage() {
@@ -426,7 +422,7 @@ class RecruitPostControllerTest {
     given(recruitPostQueryService.getDetail(5L, 7L)).willReturn(detailResponse());
 
     mockMvc
-        .perform(get(POST_URL).header("X-User-Id", "7"))
+        .perform(get(POST_URL).header(HttpHeaders.AUTHORIZATION, bearer()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.code").value("COMMON_000"))
         .andExpect(jsonPath("$.data.recruitPostId").value(5))
@@ -455,28 +451,28 @@ class RecruitPostControllerTest {
         .willThrow(new BusinessException(RecruitErrorCode.RECRUIT_POST_NOT_FOUND));
 
     mockMvc
-        .perform(get(POST_URL).header("X-User-Id", "7"))
+        .perform(get(POST_URL).header(HttpHeaders.AUTHORIZATION, bearer()))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.code").value("RECRUIT_001"));
-  }
-
-  @Test
-  @DisplayName("상세에 X-User-Id 헤더가 없으면 400 COMMON_001이고 서비스를 부르지 않는다")
-  void detailWithoutHeader() throws Exception {
-    mockMvc
-        .perform(get(POST_URL))
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.code").value("COMMON_001"));
-    verifyNoInteractions(recruitPostQueryService);
   }
 
   @Test
   @DisplayName("공고 ID가 숫자가 아니면 400 COMMON_004")
   void detailNonNumericId() throws Exception {
     mockMvc
-        .perform(get("/api/v1/recruit-posts/abc").header("X-User-Id", "7"))
+        .perform(get("/api/v1/recruit-posts/abc").header(HttpHeaders.AUTHORIZATION, bearer()))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("COMMON_004"));
+    verifyNoInteractions(recruitPostQueryService);
+  }
+
+  @Test
+  @DisplayName("토큰 없이 부르면 401 AUTH_001이고 서비스를 부르지 않는다")
+  void withoutTokenIsUnauthorized() throws Exception {
+    mockMvc
+        .perform(get(POST_URL))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value("AUTH_001"));
     verifyNoInteractions(recruitPostQueryService);
   }
 }

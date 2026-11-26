@@ -19,6 +19,7 @@ import com.ject.highfive.concert.exception.ConcertErrorCode;
 import com.ject.highfive.concert.service.ConcertService;
 import com.ject.highfive.global.exception.BusinessException;
 import com.ject.highfive.global.security.SecurityConfig;
+import com.ject.highfive.global.security.jwt.JwtTokenProvider;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -30,9 +31,9 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -40,14 +41,17 @@ import org.springframework.test.web.servlet.ResultActions;
 
 @WebMvcTest(controllers = ConcertController.class)
 @Import(SecurityConfig.class)
-// TODO: JECT-249 로그인 사용자로 바꾸면 필터를 켜고 토큰으로 호출한다 (지금은 X-User-Id 헤더로 받음)
-@AutoConfigureMockMvc(addFilters = false)
 class ConcertControllerTest {
 
   private static final String URL = "/api/v1/concerts";
 
   @Autowired MockMvc mockMvc;
+  @Autowired JwtTokenProvider jwtTokenProvider;
   @MockitoBean ConcertService concertService;
+
+  private String bearer() {
+    return "Bearer " + jwtTokenProvider.createAccessToken(7L);
+  }
 
   // 생성·수정 공통 필드의 유효한 값
   private static Map<String, String> commonFields() {
@@ -92,14 +96,17 @@ class ConcertControllerTest {
   private ResultActions putConcert(String concertId, String body) throws Exception {
     return mockMvc.perform(
         put(URL + "/" + concertId)
-            .header("X-User-Id", "7")
+            .header(HttpHeaders.AUTHORIZATION, bearer())
             .contentType(MediaType.APPLICATION_JSON)
             .content(body));
   }
 
   private ResultActions postConcert(String body) throws Exception {
     return mockMvc.perform(
-        post(URL).header("X-User-Id", "7").contentType(MediaType.APPLICATION_JSON).content(body));
+        post(URL)
+            .header(HttpHeaders.AUTHORIZATION, bearer())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(body));
   }
 
   @Test
@@ -181,20 +188,6 @@ class ConcertControllerTest {
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("COMMON_004"))
         .andExpect(jsonPath("$.errors[0].field").value("genres[1]"));
-    verifyNoInteractions(concertService);
-  }
-
-  @Test
-  @DisplayName("X-User-Id가 숫자가 아니면 500이 아니라 400 COMMON_004")
-  void nonNumericUserIdHeaderIsBadRequest() throws Exception {
-    mockMvc
-        .perform(
-            post(URL)
-                .header("X-User-Id", "abc")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(bodyWith(null, null)))
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.code").value("COMMON_004"));
     verifyNoInteractions(concertService);
   }
 
@@ -301,5 +294,15 @@ class ConcertControllerTest {
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.status").value(409))
         .andExpect(jsonPath("$.code").value("CONCERT_003"));
+  }
+
+  @Test
+  @DisplayName("토큰 없이 부르면 401 AUTH_001이고 서비스를 부르지 않는다")
+  void withoutTokenIsUnauthorized() throws Exception {
+    mockMvc
+        .perform(post(URL).contentType(MediaType.APPLICATION_JSON).content(bodyWith(null, null)))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value("AUTH_001"));
+    verifyNoInteractions(concertService);
   }
 }

@@ -21,13 +21,13 @@ import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -55,7 +55,7 @@ public class RecruitPostController {
               + "- page는 1부터(1보다 작으면 1)·최대 10000, size 기본 10·최대 100(넘으면 100)\n\n"
               + "에러: COMMON_004(목록에 없는 genre·careerLevel 코드, 50자 넘는 키워드, "
               + "10000 넘는 page, 숫자가 아닌 page·size)\n\n"
-              + "**임시: `X-User-Id` 헤더 필수 (로그인 연동 전). isMine은 아직 항상 false**")
+              + "**isMine은 아직 항상 false**")
   @GetMapping("/recruit-posts")
   public ApiResponse<PageResponse<RecruitPostSummaryResponse>> search(
       @Parameter(description = "공연 지역 코드", example = "SEOUL") @RequestParam(required = false)
@@ -73,9 +73,7 @@ public class RecruitPostController {
           @Max(value = 10000, message = "페이지는 10000 이하여야 합니다.")
           int page,
       @Parameter(description = "페이지 크기(최대 100)") @RequestParam(defaultValue = "10") int size,
-      // TODO: JECT-249 로그인 연동(JECT-211) 후 로그인 사용자로 바꾼다
-      @Parameter(description = "임시: 로그인 연동 전 사용자 ID", example = "1") @RequestHeader("X-User-Id")
-          Long userId) {
+      @AuthenticationPrincipal Long userId) {
     return ApiResponse.success(
         recruitPostQueryService.search(
             new RecruitPostSearchRequest(region, genre, careerLevel, keyword),
@@ -101,14 +99,12 @@ public class RecruitPostController {
               + "- teams[].setlist: 셋리스트 기능 전까지 항상 빈 목록\n"
               + "- 참여 밴드는 밴드 기능 전까지 임시 목록(bandId 1~5)에서 가져온다. 목록에 없는 밴드는 teams에서 빠진다\n\n"
               + "에러: RECRUIT_001(공고 없음, 삭제된 공고, 공연이 삭제된 공고)\n\n"
-              + "**임시: `X-User-Id` 헤더 필수 (로그인 연동 전). isMine은 아직 항상 false, "
+              + "**isMine은 아직 항상 false, "
               + "canInquire는 내 밴드 공고인지 아직 보지 않는다**")
   @GetMapping("/recruit-posts/{recruitPostId}")
   public ApiResponse<RecruitPostDetailResponse> getDetail(
       @Parameter(description = "모집 공고 ID") @PathVariable Long recruitPostId,
-      // TODO: JECT-249 로그인 연동(JECT-211) 후 로그인 사용자로 바꾼다
-      @Parameter(description = "임시: 로그인 연동 전 사용자 ID", example = "1") @RequestHeader("X-User-Id")
-          Long userId) {
+      @AuthenticationPrincipal Long userId) {
     return ApiResponse.success(recruitPostQueryService.getDetail(recruitPostId, userId));
   }
 
@@ -120,14 +116,12 @@ public class RecruitPostController {
               + "RECRUIT_003(마감일이 오늘 이전), CONCERT_001(공연 없음), RECRUIT_006(이미 지난 공연), "
               + "RECRUIT_005(마감일이 공연 날짜보다 늦음), "
               + "RECRUIT_002(삭제하지 않은 공고가 이미 있음)\n\n"
-              + "**임시: `X-User-Id` 헤더 필수 (로그인 연동 전). 주최 대표자 확인은 아직 하지 않는다**")
+              + "**주최 대표자 확인은 아직 하지 않는다**")
   @PostMapping("/concerts/{concertId}/recruit-posts")
   @ResponseStatus(HttpStatus.CREATED)
   public ApiResponse<RecruitPostCreateResponse> create(
       @Parameter(description = "공연 ID") @PathVariable Long concertId,
-      // TODO: JECT-249 로그인 연동(JECT-211) 후 로그인 사용자로 바꾼다
-      @Parameter(description = "임시: 로그인 연동 전 사용자 ID", example = "1") @RequestHeader("X-User-Id")
-          Long userId,
+      @AuthenticationPrincipal Long userId,
       @RequestBody @Valid RecruitPostRequest request) {
     // 본문 status는 ApiResponseStatusAdvice가 201로 맞춘다
     return ApiResponse.success(recruitPostService.create(concertId, userId, request));
@@ -141,13 +135,11 @@ public class RecruitPostController {
               + "RECRUIT_003(마감일이 오늘 이전), RECRUIT_001(공고 없음, 삭제 포함), "
               + "RECRUIT_004(이미 마감된 공고: 직접 마감, 마감일 지남 모두), "
               + "RECRUIT_005(마감일이 공연 날짜보다 늦음)\n\n"
-              + "**임시: `X-User-Id` 헤더 필수 (로그인 연동 전). 주최 대표자 확인은 아직 하지 않는다**")
+              + "**주최 대표자 확인은 아직 하지 않는다**")
   @PutMapping("/recruit-posts/{recruitPostId}")
   public ApiResponse<Map<String, Object>> update(
       @Parameter(description = "모집 공고 ID") @PathVariable Long recruitPostId,
-      // TODO: JECT-249 로그인 연동(JECT-211) 후 로그인 사용자로 바꾼다
-      @Parameter(description = "임시: 로그인 연동 전 사용자 ID", example = "1") @RequestHeader("X-User-Id")
-          Long userId,
+      @AuthenticationPrincipal Long userId,
       @RequestBody @Valid RecruitPostRequest request) {
     recruitPostService.update(recruitPostId, userId, request);
     return ApiResponse.success();
@@ -158,13 +150,11 @@ public class RecruitPostController {
       description =
           "공고를 직접 마감한다. 다시 여는 기능은 없다.\n\n"
               + "에러: RECRUIT_001(공고 없음, 삭제 포함), RECRUIT_004(이미 마감된 공고, 마감일 지남 포함)\n\n"
-              + "**임시: `X-User-Id` 헤더 필수 (로그인 연동 전). 주최 대표자 확인은 아직 하지 않는다**")
+              + "**주최 대표자 확인은 아직 하지 않는다**")
   @PostMapping("/recruit-posts/{recruitPostId}/close")
   public ApiResponse<Map<String, Object>> close(
       @Parameter(description = "모집 공고 ID") @PathVariable Long recruitPostId,
-      // TODO: JECT-249 로그인 연동(JECT-211) 후 로그인 사용자로 바꾼다
-      @Parameter(description = "임시: 로그인 연동 전 사용자 ID", example = "1") @RequestHeader("X-User-Id")
-          Long userId) {
+      @AuthenticationPrincipal Long userId) {
     recruitPostService.close(recruitPostId, userId);
     return ApiResponse.success();
   }
@@ -174,13 +164,11 @@ public class RecruitPostController {
       description =
           "공고를 삭제한다. 마감된 공고도 지울 수 있다. 공고를 지운 공연에는 새 공고로 다시 쓸 수 있다.\n\n"
               + "에러: RECRUIT_001(공고 없음, 이미 삭제 포함)\n\n"
-              + "**임시: `X-User-Id` 헤더 필수 (로그인 연동 전). 주최 대표자 확인은 아직 하지 않는다**")
+              + "**주최 대표자 확인은 아직 하지 않는다**")
   @DeleteMapping("/recruit-posts/{recruitPostId}")
   public ApiResponse<Map<String, Object>> delete(
       @Parameter(description = "모집 공고 ID") @PathVariable Long recruitPostId,
-      // TODO: JECT-249 로그인 연동(JECT-211) 후 로그인 사용자로 바꾼다
-      @Parameter(description = "임시: 로그인 연동 전 사용자 ID", example = "1") @RequestHeader("X-User-Id")
-          Long userId) {
+      @AuthenticationPrincipal Long userId) {
     recruitPostService.delete(recruitPostId, userId);
     return ApiResponse.success();
   }
