@@ -267,7 +267,7 @@ class RecruitPostControllerTest {
 
   private static final String LIST_URL = "/api/v1/recruit-posts";
   private static final RecruitPostSearchRequest NO_CONDITION =
-      new RecruitPostSearchRequest(null, null, null, null);
+      new RecruitPostSearchRequest(null, null, null, null, false);
 
   private ResultActions getList(String query) throws Exception {
     return mockMvc.perform(get(LIST_URL + query).header(HttpHeaders.AUTHORIZATION, bearer()));
@@ -303,13 +303,16 @@ class RecruitPostControllerTest {
                     "SEOUL",
                     List.of(Genre.ROCK, Genre.INDIE),
                     List.of(WantedCareerLevel.UNDER_1Y),
-                    "홍대"),
+                    "홍대",
+                    true),
                 2,
                 20,
                 7L))
         .willReturn(onePage());
 
-    getList("?region=SEOUL&genre=ROCK&genre=INDIE&careerLevel=UNDER_1Y&keyword=홍대&page=2&size=20")
+    getList(
+            "?region=SEOUL&genre=ROCK&genre=INDIE&careerLevel=UNDER_1Y&keyword=홍대"
+                + "&hideClosed=true&page=2&size=20")
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.status").value(200))
         .andExpect(jsonPath("$.data.page").value(2))
@@ -376,6 +379,15 @@ class RecruitPostControllerTest {
   @DisplayName("숫자가 아닌 page는 400 COMMON_004")
   void searchNonNumericPageRejected() throws Exception {
     getList("?page=abc")
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("COMMON_004"));
+    verifyNoInteractions(recruitPostQueryService);
+  }
+
+  @Test
+  @DisplayName("hideClosed가 true/false가 아니면 400 COMMON_004")
+  void searchInvalidHideClosedRejected() throws Exception {
+    getList("?hideClosed=abc")
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("COMMON_004"));
     verifyNoInteractions(recruitPostQueryService);

@@ -24,6 +24,8 @@ import org.springframework.data.domain.Sort;
 class RecruitPostSpecificationsTest {
 
   private static final Sort LATEST = Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
+  // 마감일 비교 기준을 고정해 날짜가 바뀌어도 결과가 같게 한다
+  private static final LocalDate TODAY = LocalDate.of(2999, 6, 1);
 
   @Autowired RecruitPostRepository recruitPostRepository;
   @Autowired ConcertRepository concertRepository;
@@ -81,8 +83,30 @@ class RecruitPostSpecificationsTest {
       int size) {
     em.clear();
     return recruitPostRepository.findAll(
-        RecruitPostSpecifications.search(region, genres, levels, keyword),
+        RecruitPostSpecifications.search(region, genres, levels, keyword, false, TODAY),
         PageRequest.of(pageIndex, size, LATEST));
+  }
+
+  private RecruitPost postWithDeadline(LocalDate deadline) {
+    return recruitPostRepository.saveAndFlush(
+        RecruitPost.builder()
+            .concert(concert("공연", "SEOUL", Genre.ROCK))
+            .authorUserId(10L)
+            .wantedCareerLevel(WantedCareerLevel.Y1_TO_3)
+            .teamTypes(List.of(TeamType.ANYONE))
+            .deadline(deadline)
+            .description("함께할 팀을 찾습니다.")
+            .build());
+  }
+
+  private List<Long> openIds() {
+    em.clear();
+    return recruitPostRepository
+        .findAll(
+            RecruitPostSpecifications.search(null, null, null, null, true, TODAY),
+            PageRequest.of(0, 50, LATEST))
+        .map(RecruitPost::getId)
+        .getContent();
   }
 
   private List<Long> ids(
@@ -232,5 +256,28 @@ class RecruitPostSpecificationsTest {
         .containsExactly(third.getId(), second.getId());
     assertThat(page.getTotalElements()).isEqualTo(3);
     assertThat(page.hasNext()).isTrue();
+  }
+
+  @Test
+  @DisplayName("마감 숨기기는 마감일이 지난 공고와 직접 마감한 공고를 빼고, 마감일이 오늘인 공고는 남긴다")
+  void hideClosedExcludesClosedPosts() {
+    final RecruitPost open = postWithDeadline(TODAY.plusDays(1));
+    final RecruitPost dueToday = postWithDeadline(TODAY);
+    postWithDeadline(TODAY.minusDays(1));
+    postWithDeadline(TODAY.plusDays(1)).close();
+    em.flush();
+
+    assertThat(openIds()).containsExactly(dueToday.getId(), open.getId());
+  }
+
+  @Test
+  @DisplayName("마감 숨기기를 끄면 마감 공고도 모두 나온다")
+  void closedPostsIncludedByDefault() {
+    postWithDeadline(TODAY.plusDays(1));
+    postWithDeadline(TODAY.minusDays(1));
+    postWithDeadline(TODAY.plusDays(1)).close();
+    em.flush();
+
+    assertThat(ids(null, null, null, null)).hasSize(3);
   }
 }

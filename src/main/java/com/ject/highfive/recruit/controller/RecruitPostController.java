@@ -48,13 +48,14 @@ public class RecruitPostController {
   @Operation(
       summary = "모집 공고 목록·검색",
       description =
-          "공고를 최신 등록순으로 페이지 단위로 돌려준다. 삭제된 공고·공연은 빠지고 마감 공고는 포함된다.\n\n"
+          "공고를 최신 등록순으로 페이지 단위로 돌려준다. 삭제된 공고·공연은 빠지고 마감 공고는 기본으로 포함된다.\n\n"
               + "- region: 하나. genre·careerLevel: 여러 개(같은 이름 반복). 장르는 하나라도 맞으면 포함\n"
               + "- careerLevel로 거르면 무관(ANY) 공고는 항상 포함\n"
-              + "- keyword: 공연 제목·공고 소개에서 찾음, 최대 50자\n"
+              + "- keyword: 공연 제목·지역(공연 주소)에서 찾음, 최대 50자\n"
+              + "- hideClosed=true면 마감 공고(마감일 지남·직접 마감)를 뺀다. 마감일이 오늘인 공고는 남는다\n"
               + "- page는 1부터(1보다 작으면 1)·최대 10000, size 기본 10·최대 100(넘으면 100)\n\n"
               + "에러: COMMON_004(목록에 없는 genre·careerLevel 코드, 50자 넘는 키워드, "
-              + "10000 넘는 page, 숫자가 아닌 page·size)\n\n"
+              + "10000 넘는 page, 숫자가 아닌 page·size, true/false가 아닌 hideClosed)\n\n"
               + "**isMine은 아직 항상 false**")
   @GetMapping("/recruit-posts")
   public ApiResponse<PageResponse<RecruitPostSummaryResponse>> search(
@@ -63,10 +64,12 @@ public class RecruitPostController {
       @Parameter(description = "장르 코드, 여러 개 가능") @RequestParam(required = false) List<Genre> genre,
       @Parameter(description = "모집 팀 연주 기간 코드, 여러 개 가능") @RequestParam(required = false)
           List<WantedCareerLevel> careerLevel,
-      @Parameter(description = "검색어(공연 제목·공고 소개)")
+      @Parameter(description = "검색어(공연 제목·지역(공연 주소))")
           @RequestParam(required = false)
           @Size(max = 50, message = "검색어는 50자 이하여야 합니다.")
           String keyword,
+      @Parameter(description = "마감된 공고 숨기기(기본 false)") @RequestParam(defaultValue = "false")
+          boolean hideClosed,
       // offset((page-1)*size)이 int를 넘으면 Spring Data가 예외를 던져 500이 나므로 상한을 둔다
       @Parameter(description = "페이지(1부터, 최대 10000)")
           @RequestParam(defaultValue = "1")
@@ -76,7 +79,7 @@ public class RecruitPostController {
       @AuthenticationPrincipal Long userId) {
     return ApiResponse.success(
         recruitPostQueryService.search(
-            new RecruitPostSearchRequest(region, genre, careerLevel, keyword),
+            new RecruitPostSearchRequest(region, genre, careerLevel, keyword, hideClosed),
             Math.max(page, 1),
             pageSize(size),
             userId));

@@ -63,15 +63,21 @@ public class RecruitPostQueryService {
 
   public PageResponse<RecruitPostSummaryResponse> search(
       RecruitPostSearchRequest request, int page, int size, Long userId) {
+    // 마감 숨기기 조건과 응답 status를 같은 날짜로 계산한다
+    LocalDate today = LocalDate.now();
     Page<RecruitPost> posts =
         recruitPostRepository.findAll(
             RecruitPostSpecifications.search(
-                request.region(), request.genres(), request.careerLevels(), request.keyword()),
+                request.region(),
+                request.genres(),
+                request.careerLevels(),
+                request.keyword(),
+                request.hideClosed(),
+                today),
             PageRequest.of(page - 1, size, LATEST));
 
     Map<Long, Integer> joinedTeamCounts = joinedTeamCounts(posts.getContent());
     Set<Long> favoritedPostIds = favoritedPostIds(userId, posts.getContent());
-    LocalDate today = LocalDate.now();
     return PageResponse.from(
         posts.map(
             post ->
