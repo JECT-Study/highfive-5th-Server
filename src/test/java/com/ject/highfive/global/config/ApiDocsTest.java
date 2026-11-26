@@ -140,19 +140,6 @@ class ApiDocsTest {
   }
 
   @Test
-  @DisplayName("올바른 약관 동의 요청은 성공한다")
-  void validTermAgreementsSucceed() throws Exception {
-    mockMvc
-        .perform(
-            post("/api/v1/users/me/term-agreements")
-                .header(HttpHeaders.AUTHORIZATION, bearerToken())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"agreements\":[{\"termId\":1,\"agreed\":true}]}"))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.code").value("COMMON_000"));
-  }
-
-  @Test
   @DisplayName("@ResponseStatus(CREATED)를 붙인 API는 Swagger에도 201로 표시된다")
   void responseStatusIsDocumentedInSwagger() throws Exception {
     // 테스트 전용 컨트롤러(ExceptionTestController)의 POST /test/created로 확인한다

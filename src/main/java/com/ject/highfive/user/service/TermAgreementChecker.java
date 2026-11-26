@@ -1,16 +1,28 @@
 package com.ject.highfive.user.service;
 
 import com.ject.highfive.user.entity.User;
-import com.ject.highfive.user.entity.UserStatus;
+import com.ject.highfive.user.repository.UserTermAgreementRepository;
+import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-// 최신 필수 약관에 모두 동의했는지. nextStep(TERMS)과 프로필 저장(USER_003)이 쓴다
+// 지금 시행 중인 필수 약관에 모두 동의했는지. nextStep(TERMS)과 프로필 저장(USER_003)이 쓴다.
+// 필수 약관이 개정되면(새 버전 시행) 새 버전에는 동의 기록이 없으니 기존 회원도 다시 TERMS가 된다 (결정 #37)
 @Component
+@RequiredArgsConstructor
 public class TermAgreementChecker {
 
-  // TODO: 약관 동의 기록(user_term_agreements)으로 판단한다 (JECT-213, 약관 정책 PM 확정 후).
-  //  지금은 약관 데이터가 없어 가입 중(PENDING)이면 아직 동의하지 않은 것으로 본다
+  private final CurrentTerms currentTerms;
+  private final UserTermAgreementRepository userTermAgreementRepository;
+
   public boolean hasAgreedRequiredTerms(User user) {
-    return user.getStatus() != UserStatus.PENDING;
+    List<Long> requiredIds = currentTerms.requiredIds();
+    if (requiredIds.isEmpty()) {
+      return true;
+    }
+    long agreed =
+        userTermAgreementRepository.countByUserIdAndTermIdInAndAgreedTrue(
+            user.getId(), requiredIds);
+    return agreed == requiredIds.size();
   }
 }

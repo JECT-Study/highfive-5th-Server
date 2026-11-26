@@ -48,7 +48,8 @@ class SocialLoginServiceTest {
           accountRepository,
           signUpService,
           authService,
-          new NextStepResolver(new TermAgreementChecker(), new ActiveBandChecker()));
+          // 약관 동의 기록이 없는 상태 (mock 기본값 false → 약관 미동의)
+          new NextStepResolver(mock(TermAgreementChecker.class), new ActiveBandChecker()));
 
   private static User userWithId(long id) {
     User user = User.signUp();

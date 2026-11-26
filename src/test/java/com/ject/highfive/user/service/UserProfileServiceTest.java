@@ -19,6 +19,7 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
 import org.hibernate.exception.ConstraintViolationException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -26,13 +27,33 @@ import org.springframework.dao.DataIntegrityViolationException;
 class UserProfileServiceTest {
 
   private final UserRepository userRepository = mock(UserRepository.class);
+  private final TermAgreementChecker termAgreementChecker = mock(TermAgreementChecker.class);
   private final UserProfileService service =
       new UserProfileService(
           userRepository,
           mock(UserGenreRepository.class),
           mock(UserPositionRepository.class),
-          new NextStepResolver(new TermAgreementChecker(), new ActiveBandChecker()),
-          new ActiveBandChecker());
+          new NextStepResolver(termAgreementChecker, new ActiveBandChecker()),
+          new ActiveBandChecker(),
+          termAgreementChecker);
+
+  // 따로 정하지 않으면 필수 약관에 모두 동의한 회원으로 본다
+  @BeforeEach
+  void agreedToRequiredTerms() {
+    given(termAgreementChecker.hasAgreedRequiredTerms(any())).willReturn(true);
+  }
+
+  @Test
+  @DisplayName("필수 약관에 동의하지 않은 회원은 프로필을 저장할 수 없다 (USER_003)")
+  void requiredTermsNotAgreedIsUser003() {
+    given(userRepository.findByIdForUpdate(1L)).willReturn(Optional.of(User.signUp()));
+    given(termAgreementChecker.hasAgreedRequiredTerms(any())).willReturn(false);
+
+    assertThatThrownBy(() -> service.updateProfile(1L, request()))
+        .isInstanceOf(BusinessException.class)
+        .extracting(e -> ((BusinessException) e).getErrorCode())
+        .isEqualTo(UserErrorCode.REQUIRED_TERMS_NOT_AGREED);
+  }
 
   private static DataIntegrityViolationException violation(String constraintName) {
     return new DataIntegrityViolationException(
