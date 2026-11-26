@@ -18,6 +18,8 @@ import com.ject.highfive.concert.repository.ConcertTeamRepository;
 import com.ject.highfive.concert.repository.JoinedTeamCount;
 import com.ject.highfive.global.common.response.PageResponse;
 import com.ject.highfive.global.exception.BusinessException;
+import com.ject.highfive.recruit.dto.BandSearchRequest;
+import com.ject.highfive.recruit.dto.BandSummaryResponse;
 import com.ject.highfive.recruit.dto.RecruitPostDetailResponse;
 import com.ject.highfive.recruit.dto.RecruitPostSearchRequest;
 import com.ject.highfive.recruit.dto.RecruitPostSummaryResponse;
@@ -358,5 +360,46 @@ class RecruitPostQueryServiceTest {
         .extracting("errorCode")
         .isEqualTo(RecruitErrorCode.RECRUIT_POST_NOT_FOUND);
     verifyNoInteractions(concertTeamRepository, favoriteRepository);
+  }
+
+  @Test
+  @DisplayName("팀 검색은 store 결과를 1부터 세는 페이지 응답과 팀 카드로 바꾼다")
+  void searchBandsMapsToPageResponse() {
+    PageResponse<BandSummaryResponse> response =
+        service.searchBands(new BandSearchRequest("", "SEOUL", null, null), 2, 2);
+
+    assertThat(response.content()).extracting(BandSummaryResponse::bandId).containsExactly(1L);
+    assertThat(response.page()).isEqualTo(2);
+    assertThat(response.size()).isEqualTo(2);
+    assertThat(response.totalElements()).isEqualTo(3);
+    assertThat(response.totalPages()).isEqualTo(2);
+    assertThat(response.hasNext()).isFalse();
+    BandSummaryResponse band = response.content().get(0);
+    assertThat(band.name()).isEqualTo("새벽세시");
+    assertThat(band.genres()).containsExactly(Genre.ROCK, Genre.INDIE);
+    assertThat(band.careerLevel()).isEqualTo(WantedCareerLevel.Y1_TO_3);
+    assertThat(band.region()).isEqualTo("SEOUL");
+    assertThat(band.memberCount()).isEqualTo(4);
+  }
+
+  @Test
+  @DisplayName("팀 검색은 조건을 store에 그대로 넘긴다")
+  void searchBandsPassesConditions() {
+    service.searchBands(
+        new BandSearchRequest(
+            "새벽",
+            "SEOUL",
+            List.of(Genre.ROCK),
+            List.of(WantedCareerLevel.ANY, WantedCareerLevel.Y1_TO_3)),
+        1,
+        10);
+
+    verify(dummyBandStore)
+        .search(
+            "새벽",
+            "SEOUL",
+            List.of(Genre.ROCK),
+            List.of(WantedCareerLevel.ANY, WantedCareerLevel.Y1_TO_3),
+            PageRequest.of(0, 10));
   }
 }

@@ -22,6 +22,8 @@ import com.ject.highfive.global.common.response.PageResponse;
 import com.ject.highfive.global.exception.BusinessException;
 import com.ject.highfive.global.security.SecurityConfig;
 import com.ject.highfive.global.security.jwt.JwtTokenProvider;
+import com.ject.highfive.recruit.dto.BandSearchRequest;
+import com.ject.highfive.recruit.dto.BandSummaryResponse;
 import com.ject.highfive.recruit.dto.RecruitPostCreateResponse;
 import com.ject.highfive.recruit.dto.RecruitPostDetailResponse;
 import com.ject.highfive.recruit.dto.RecruitPostSearchRequest;
@@ -483,6 +485,117 @@ class RecruitPostControllerTest {
   void withoutTokenIsUnauthorized() throws Exception {
     mockMvc
         .perform(get(POST_URL))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value("AUTH_001"));
+    verifyNoInteractions(recruitPostQueryService);
+  }
+
+  private static final String BANDS_URL = "/api/v1/recruit-posts/bands";
+
+  private ResultActions getBands(String query) throws Exception {
+    return mockMvc.perform(get(BANDS_URL + query).header(HttpHeaders.AUTHORIZATION, bearer()));
+  }
+
+  @Test
+  @DisplayName("팀 검색은 다중 파라미터를 묶어 넘기고 팀 카드와 페이징 필드를 돌려준다")
+  void searchBandsReturnsPageFields() throws Exception {
+    BandSummaryResponse band =
+        new BandSummaryResponse(
+            1L,
+            "새벽세시",
+            null,
+            List.of(Genre.ROCK, Genre.INDIE),
+            WantedCareerLevel.Y1_TO_3,
+            "SEOUL",
+            4);
+    given(
+            recruitPostQueryService.searchBands(
+                new BandSearchRequest(
+                    "새벽",
+                    "SEOUL",
+                    List.of(Genre.ROCK, Genre.INDIE),
+                    List.of(WantedCareerLevel.ANY, WantedCareerLevel.Y1_TO_3)),
+                2,
+                20))
+        .willReturn(new PageResponse<>(List.of(band), 2, 20, 21, 2, false));
+
+    getBands(
+            "?keyword=새벽&region=SEOUL&genre=ROCK&genre=INDIE"
+                + "&careerLevel=ANY&careerLevel=Y1_TO_3&page=2&size=20")
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value("COMMON_000"))
+        .andExpect(jsonPath("$.data.page").value(2))
+        .andExpect(jsonPath("$.data.size").value(20))
+        .andExpect(jsonPath("$.data.totalElements").value(21))
+        .andExpect(jsonPath("$.data.totalPages").value(2))
+        .andExpect(jsonPath("$.data.hasNext").value(false))
+        .andExpect(jsonPath("$.data.content[0].bandId").value(1))
+        .andExpect(jsonPath("$.data.content[0].name").value("새벽세시"))
+        .andExpect(jsonPath("$.data.content[0].profileImageUrl").value(nullValue()))
+        .andExpect(jsonPath("$.data.content[0].genres[1]").value("INDIE"))
+        .andExpect(jsonPath("$.data.content[0].careerLevel").value("Y1_TO_3"))
+        .andExpect(jsonPath("$.data.content[0].region").value("SEOUL"))
+        .andExpect(jsonPath("$.data.content[0].memberCount").value(4))
+        .andExpect(jsonPath("$.data.content[0]", not(hasKey("customGenre"))));
+  }
+
+  @Test
+  @DisplayName("팀 검색은 page가 1보다 작으면 1, size가 1보다 작으면 10, 100보다 크면 100으로 바꾼다")
+  void searchBandsCorrectsPaging() throws Exception {
+    getBands("?keyword=새벽&page=0&size=0").andExpect(status().isOk());
+    getBands("?keyword=새벽&page=-3&size=101").andExpect(status().isOk());
+
+    BandSearchRequest request = new BandSearchRequest("새벽", null, null, null);
+    verify(recruitPostQueryService).searchBands(request, 1, 10);
+    verify(recruitPostQueryService).searchBands(request, 1, 100);
+  }
+
+  @Test
+  @DisplayName("팀 검색은 파라미터가 없으면 조건 없이 page 1, size 10으로 조회한다")
+  void searchBandsDefaults() throws Exception {
+    getBands("").andExpect(status().isOk());
+
+    verify(recruitPostQueryService)
+        .searchBands(new BandSearchRequest(null, null, null, null), 1, 10);
+  }
+
+  @Test
+  @DisplayName("팀 검색 keyword가 50자를 넘으면 400 COMMON_004. 50자까지는 받는다")
+  void searchBandsTooLongKeywordRejected() throws Exception {
+    getBands("?keyword=" + "가".repeat(51))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("COMMON_004"));
+    verifyNoInteractions(recruitPostQueryService);
+
+    getBands("?keyword=" + "가".repeat(50)).andExpect(status().isOk());
+  }
+
+  @Test
+  @DisplayName("팀 검색에 목록에 없는 genre·careerLevel 코드는 400 COMMON_004")
+  void searchBandsInvalidCodeRejected() throws Exception {
+    getBands("?keyword=새벽&genre=HIPHOP")
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("COMMON_004"));
+    getBands("?keyword=새벽&careerLevel=FOREVER")
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("COMMON_004"));
+    verifyNoInteractions(recruitPostQueryService);
+  }
+
+  @Test
+  @DisplayName("팀 검색에 page가 10000을 넘으면 400 COMMON_004")
+  void searchBandsTooLargePageRejected() throws Exception {
+    getBands("?keyword=새벽&page=10001")
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("COMMON_004"));
+    verifyNoInteractions(recruitPostQueryService);
+  }
+
+  @Test
+  @DisplayName("팀 검색을 토큰 없이 부르면 401 AUTH_001")
+  void searchBandsWithoutTokenIsUnauthorized() throws Exception {
+    mockMvc
+        .perform(get(BANDS_URL + "?keyword=새벽"))
         .andExpect(status().isUnauthorized())
         .andExpect(jsonPath("$.code").value("AUTH_001"));
     verifyNoInteractions(recruitPostQueryService);

@@ -8,6 +8,8 @@ import com.ject.highfive.concert.repository.ConcertTeamRepository;
 import com.ject.highfive.concert.repository.JoinedTeamCount;
 import com.ject.highfive.global.common.response.PageResponse;
 import com.ject.highfive.global.exception.BusinessException;
+import com.ject.highfive.recruit.dto.BandSearchRequest;
+import com.ject.highfive.recruit.dto.BandSummaryResponse;
 import com.ject.highfive.recruit.dto.RecruitPostDetailResponse;
 import com.ject.highfive.recruit.dto.RecruitPostSearchRequest;
 import com.ject.highfive.recruit.dto.RecruitPostSummaryResponse;
@@ -28,9 +30,10 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// 공고 목록(2.5)과 상세(2.7).
+// 공고 목록(2.5), 상세(2.7), 팀 검색(2.6).
 // 목록은 페이지마다 쿼리 최대 5번: 공고+공연, 개수, 장르(@BatchSize), 합류 팀 수, 찜 여부 (221 스펙 4.5)
 // 상세는 쿼리 5번: 공고+공연, 팀 유형, 공연 장르, 참여 팀, 찜 여부 (223 스펙 4.5)
+// 팀 검색은 밴드 엔티티 전까지 DB 없이 DummyBandStore에서 거른다 (225 스펙 4.1, JECT-253에서 교체)
 // open-in-view가 꺼져 있어 지연 로딩이 끝나도록 응답을 트랜잭션 안에서 만든다
 @Service
 @Transactional(readOnly = true)
@@ -86,6 +89,19 @@ public class RecruitPostQueryService {
                     joinedTeamCounts.getOrDefault(post.getConcert().getId(), 0),
                     favoritedPostIds.contains(post.getId()),
                     today)));
+  }
+
+  public PageResponse<BandSummaryResponse> searchBands(
+      BandSearchRequest request, int page, int size) {
+    return PageResponse.from(
+        dummyBandStore
+            .search(
+                request.keyword(),
+                request.region(),
+                request.genres(),
+                request.careerLevels(),
+                PageRequest.of(page - 1, size))
+            .map(BandSummaryResponse::from));
   }
 
   private Map<Long, Integer> joinedTeamCounts(List<RecruitPost> posts) {
