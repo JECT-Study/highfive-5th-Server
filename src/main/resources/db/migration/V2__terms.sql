@@ -8,7 +8,7 @@ create table terms (
     version      varchar(20)  not null,
     title        varchar(100) not null,
     is_required  bit          not null,
-    -- 약관 전문(공개 웹페이지) 주소. PM이 URL을 주기 전까지는 NULL
+    -- 약관 전문(공개 웹페이지) 주소. 공개 페이지(Notion)를 만들기 전까지는 NULL
     content_url  varchar(500),
     -- 이 시각이 지난 버전 중 가장 최근 것이 현재 버전
     effective_at datetime(6)  not null,

@@ -42,7 +42,8 @@ public class Term {
   @Column(name = "is_required", nullable = false)
   private boolean required;
 
-  // 약관 전문(공개 웹페이지) 주소. PM이 URL을 주기 전까지는 null (결정 #35)
+  // 약관 전문(공개 웹페이지) 주소. 공개 페이지(Notion)를 만들기 전까지는 null.
+  // 개정해도 같은 페이지 내용을 고쳐 URL은 유지하고 버전 행만 추가한다 (결정 #35)
   @Column(name = "content_url", length = 500)
   private String contentUrl;
 

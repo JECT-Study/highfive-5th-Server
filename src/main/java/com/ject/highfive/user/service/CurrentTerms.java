@@ -2,6 +2,7 @@ package com.ject.highfive.user.service;
 
 import com.ject.highfive.user.entity.Term;
 import com.ject.highfive.user.repository.TermRepository;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
@@ -23,11 +24,13 @@ public class CurrentTerms {
       Comparator.comparing((Term term) -> !term.isRequired()).thenComparing(Term::getId);
 
   private final TermRepository termRepository;
+  private final Clock clock;
 
   public List<Term> find() {
-    return find(LocalDateTime.now());
+    return find(LocalDateTime.now(clock));
   }
 
+  // 시행일이 now와 같은 버전도 시행 중으로 본다. 같은 code에서 시행일까지 같으면 나중에 추가한 행(ID 큰 것)
   public List<Term> find(LocalDateTime now) {
     Map<String, Term> latestByCode =
         termRepository.findAllByEffectiveAtLessThanEqual(now).stream()

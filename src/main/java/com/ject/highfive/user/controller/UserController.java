@@ -49,8 +49,9 @@ public class UserController {
       description =
           "약관 목록 조회에서 받은 약관 각각의 동의·거부를 저장하고 다음 화면을 돌려준다. "
               + "약관 개정 후 재동의에도 쓴다. 회원 상태는 바꾸지 않는다(ACTIVE는 프로필 저장 때).\n\n"
-              + "에러: USER_003(필수 약관 누락·거부), USER_005(사용자 없음), "
-              + "COMMON_004(필드 누락, 없는 약관·지난 버전·중복 termId)")
+              + "에러: USER_003(필수 약관 거부), USER_005(사용자 없음), "
+              + "COMMON_004(필드 누락, 없는 약관·지난 버전·중복 termId, 시행 중인 필수 약관 누락 → "
+              + "약관 목록을 다시 조회)")
   @PostMapping("/me/term-agreements")
   public ApiResponse<TermAgreementResponse> agreeTerms(
       @AuthenticationPrincipal Long userId, @RequestBody @Valid TermAgreementRequest request) {
