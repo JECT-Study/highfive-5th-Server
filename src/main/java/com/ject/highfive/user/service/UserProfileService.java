@@ -32,6 +32,7 @@ public class UserProfileService {
   private final UserPositionRepository userPositionRepository;
   private final NextStepResolver nextStepResolver;
   private final ActiveBandChecker activeBandChecker;
+  private final TermAgreementChecker termAgreementChecker;
 
   @Transactional(readOnly = true)
   public MyInfoResponse getMyInfo(Long userId) {
@@ -68,7 +69,9 @@ public class UserProfileService {
         userRepository
             .findByIdForUpdate(userId)
             .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
-    // TODO: 최신 필수 약관에 모두 동의하지 않았으면 USER_003 (JECT-213, 약관 정책 PM 확정 후)
+    if (!termAgreementChecker.hasAgreedRequiredTerms(user)) {
+      throw new BusinessException(UserErrorCode.REQUIRED_TERMS_NOT_AGREED);
+    }
     // TODO: profileImageUrl은 이미지 저장소(CloudFront) 주소만 허용한다 (JECT-247 저장소 구성 후)
     if (userRepository.existsByNicknameAndIdNot(request.nickname(), userId)) {
       throw new BusinessException(UserErrorCode.NICKNAME_DUPLICATED);

@@ -70,7 +70,8 @@ class UserProfileApiTest {
   }
 
   @Test
-  @DisplayName("가입 직후 내 정보는 PENDING, 프로필 없음, 약관 화면으로")
+  // 테스트 DB(H2)에는 약관이 없어 약관 단계를 건너뛰고 PROFILE이 된다 (약관이 있을 때는 TermApiTest)
+  @DisplayName("가입 직후 내 정보는 PENDING, 프로필 없음, 프로필 화면으로")
   void newUserInfo() throws Exception {
     Long userId = newUser();
 
@@ -84,7 +85,7 @@ class UserProfileApiTest {
         .andExpect(jsonPath("$.data.positionCodes").value(empty()))
         .andExpect(jsonPath("$.data.genreCustomName").value(nullValue()))
         .andExpect(jsonPath("$.data.hasBand").value(false))
-        .andExpect(jsonPath("$.data.nextStep").value("TERMS"));
+        .andExpect(jsonPath("$.data.nextStep").value("PROFILE"));
   }
 
   @Test

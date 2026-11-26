@@ -2,12 +2,12 @@ package com.ject.highfive.user.controller;
 
 import com.ject.highfive.global.common.response.ApiResponse;
 import com.ject.highfive.user.dto.MyInfoResponse;
-import com.ject.highfive.user.dto.NextStep;
 import com.ject.highfive.user.dto.NicknameAvailabilityResponse;
 import com.ject.highfive.user.dto.ProfileUpdateRequest;
 import com.ject.highfive.user.dto.ProfileUpdateResponse;
 import com.ject.highfive.user.dto.TermAgreementRequest;
 import com.ject.highfive.user.dto.TermAgreementResponse;
+import com.ject.highfive.user.service.TermService;
 import com.ject.highfive.user.service.UserProfileService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -30,30 +30,32 @@ import org.springframework.web.bind.annotation.RestController;
 public class UserController {
 
   private final UserProfileService userProfileService;
+  private final TermService termService;
 
   @Operation(
       summary = "내 정보 조회",
       description =
           "앱 실행 시 회원 상태·프로필과 이동할 화면(nextStep)을 돌려준다. PENDING 회원도 호출할 수 있다.\n\n"
               + "에러: AUTH_001, AUTH_002, AUTH_003, USER_005(사용자 없음)\n\n"
-              + "약관·밴드 기능 전까지 nextStep은 가입 중(PENDING)이면 TERMS, 프로필 저장 후 BAND_START이고 "
-              + "hasBand는 항상 false")
+              + "필수 약관이 개정되면 ACTIVE 회원도 다시 TERMS가 된다. "
+              + "밴드 기능 전까지 hasBand는 항상 false라 프로필 저장 후에는 BAND_START")
   @GetMapping("/me")
   public ApiResponse<MyInfoResponse> getMyInfo(@AuthenticationPrincipal Long userId) {
     return ApiResponse.success(userProfileService.getMyInfo(userId));
   }
 
-  // TODO: 약관 동의 저장 (JECT-213, 약관 정책 PM 확정 후)
   @Operation(
       summary = "약관 동의",
       description =
-          "최신 약관 각각의 동의·거부를 저장하고 다음 화면을 돌려준다. 약관 개정 후 재동의에도 쓴다.\n\n"
-              + "에러: USER_003(필수 약관 미동의), COMMON_004(필드 누락, 최신이 아닌 termId)\n\n"
-              + "**현재는 가짜 응답 (저장하지 않음)**")
+          "약관 목록 조회에서 받은 약관 각각의 동의·거부를 저장하고 다음 화면을 돌려준다. "
+              + "약관 개정 후 재동의에도 쓴다. 회원 상태는 바꾸지 않는다(ACTIVE는 프로필 저장 때).\n\n"
+              + "에러: USER_003(필수 약관 거부), USER_005(사용자 없음), "
+              + "COMMON_004(필드 누락, 없는 약관·지난 버전·중복 termId, 시행 중인 필수 약관 누락 → "
+              + "약관 목록을 다시 조회)")
   @PostMapping("/me/term-agreements")
   public ApiResponse<TermAgreementResponse> agreeTerms(
-      @RequestBody @Valid TermAgreementRequest request) {
-    return ApiResponse.success(new TermAgreementResponse(NextStep.PROFILE));
+      @AuthenticationPrincipal Long userId, @RequestBody @Valid TermAgreementRequest request) {
+    return ApiResponse.success(termService.agree(userId, request));
   }
 
   @Operation(
@@ -75,9 +77,8 @@ public class UserController {
           "닉네임·선호 장르·연주 포지션·사진을 저장한다. 온보딩 중(PENDING)이면 ACTIVE로 바꾼다. 마이페이지 수정에도 쓴다.\n\n"
               + "장르·포지션은 여러 개를 고른다. 장르 기타(ETC)·포지션 직접입력(CUSTOM)을 고르면 "
               + "genreCustomName·positionCustomName을 함께 보낸다.\n\n"
-              + "에러: USER_001(닉네임 중복), USER_005(사용자 없음), "
-              + "COMMON_004(필드 누락·형식, 없는 코드, 직접 입력 값 누락·형식)\n\n"
-              + "약관 기능 전까지 필수 약관 동의(USER_003)는 확인하지 않는다")
+              + "에러: USER_001(닉네임 중복), USER_003(필수 약관 미동의), USER_005(사용자 없음), "
+              + "COMMON_004(필드 누락·형식, 없는 코드, 직접 입력 값 누락·형식)")
   @PutMapping("/me/profile")
   public ApiResponse<ProfileUpdateResponse> updateProfile(
       @AuthenticationPrincipal Long userId, @RequestBody @Valid ProfileUpdateRequest request) {

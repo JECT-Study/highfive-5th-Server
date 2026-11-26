@@ -35,13 +35,12 @@ class NextStepResolverTest {
   }
 
   @Test
-  @DisplayName("약관 기능 전 임시 규칙: 가입 중(PENDING)이면 약관 미동의로 본다")
-  void pendingUserHasNotAgreedYet() {
+  @DisplayName("프로필까지 마친 회원도 필수 약관이 개정돼 미동의 상태면 다시 TERMS (결정 #37)")
+  void activeUserGoesBackToTermsAfterRevision() {
     User user = User.signUp();
-    TermAgreementChecker checker = new TermAgreementChecker();
-
-    assertThat(checker.hasAgreedRequiredTerms(user)).isFalse();
     user.updateProfile("두현", null);
-    assertThat(checker.hasAgreedRequiredTerms(user)).isTrue();
+    given(termAgreementChecker.hasAgreedRequiredTerms(user)).willReturn(false);
+
+    assertThat(resolver.resolve(user)).isEqualTo(NextStep.TERMS);
   }
 }

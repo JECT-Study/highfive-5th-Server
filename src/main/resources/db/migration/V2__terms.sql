@@ -1,0 +1,39 @@
+-- 회원 약관과 약관 동의 기록 (JECT-213, 결정 #34·#35·#37)
+-- 약관을 개정하면 같은 code로 새 버전 행을 추가한다 (이전 버전은 지우지 않음)
+
+create table terms (
+    id           bigint       not null auto_increment,
+    -- SERVICE / PRIVACY / AGE_OVER_14 … (약관 목록은 데이터라 ENUM이 아닌 문자열)
+    code         varchar(30)  not null,
+    version      varchar(20)  not null,
+    title        varchar(100) not null,
+    is_required  bit          not null,
+    -- 약관 전문(공개 웹페이지) 주소. 공개 페이지(Notion)를 만들기 전까지는 NULL
+    content_url  varchar(500),
+    -- 이 시각이 지난 버전 중 가장 최근 것이 현재 버전
+    effective_at datetime(6)  not null,
+    primary key (id),
+    constraint uk_terms_code_version unique (code, version)
+) engine=InnoDB default charset=utf8mb4 collate=utf8mb4_unicode_ci;
+
+create table user_term_agreements (
+    id        bigint      not null auto_increment,
+    user_id   bigint      not null,
+    term_id   bigint      not null,
+    -- 선택 약관은 거부(0)도 기록한다
+    agreed    bit         not null,
+    agreed_at datetime(6) not null,
+    primary key (id),
+    constraint uk_user_term_agreements_user_term unique (user_id, term_id),
+    constraint fk_user_term_agreements_user foreign key (user_id) references users (id),
+    constraint fk_user_term_agreements_term foreign key (term_id) references terms (id)
+) engine=InnoDB default charset=utf8mb4 collate=utf8mb4_unicode_ci;
+
+-- 회원 가입 약관은 필수 3개뿐이다 (결정 #34). 마케팅 수신 동의는 받지 않아 선택 약관이 없고,
+-- 나중에 광고성 정보를 보내게 되면 그때 선택 약관 행을 새 마이그레이션으로 추가한다 (is_required = 0).
+-- content_url은 공개 페이지(Notion)를 만든 뒤 새 마이그레이션으로 채운다 (결정 #35)
+-- 약관 문서의 시행일은 2026-12-01이지만, dev에서 바로 온보딩을 쓰도록 첫 버전은 2026-11-01부터 시행으로 둔다
+insert into terms (code, version, title, is_required, content_url, effective_at) values
+    ('SERVICE',     '1.0', '서비스 이용약관',          1, null, '2026-11-01 00:00:00'),
+    ('PRIVACY',     '1.0', '개인정보 수집·이용 동의',   1, null, '2026-11-01 00:00:00'),
+    ('AGE_OVER_14', '1.0', '만 14세 이상입니다',        1, null, '2026-11-01 00:00:00');

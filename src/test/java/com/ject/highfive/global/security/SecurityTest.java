@@ -131,7 +131,8 @@ class SecurityTest {
         .andExpect(jsonPath("$.data.accessToken").isNotEmpty())
         .andExpect(jsonPath("$.data.refreshToken").isNotEmpty())
         .andExpect(jsonPath("$.data.user.status").value("PENDING"))
-        .andExpect(jsonPath("$.data.nextStep").value("TERMS"));
+        // 테스트 DB(H2)에는 약관이 없어 약관 단계를 건너뛴다 (약관이 있을 때의 TERMS는 TermApiTest)
+        .andExpect(jsonPath("$.data.nextStep").value("PROFILE"));
   }
 
   @Test
