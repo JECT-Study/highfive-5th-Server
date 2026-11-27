@@ -39,7 +39,7 @@ class RecruitPostQueryServiceQueryCountTest {
 
   private static final Long USER_ID = 7L;
   private static final RecruitPostSearchRequest NO_CONDITION =
-      new RecruitPostSearchRequest(null, null, null, null);
+      new RecruitPostSearchRequest(null, null, null, null, false);
 
   @Autowired RecruitPostQueryService queryService;
   @Autowired RecruitPostRepository recruitPostRepository;

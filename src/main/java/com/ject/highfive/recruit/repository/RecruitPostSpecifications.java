@@ -3,10 +3,12 @@ package com.ject.highfive.recruit.repository;
 import com.ject.highfive.concert.entity.Concert;
 import com.ject.highfive.concert.entity.Genre;
 import com.ject.highfive.recruit.entity.RecruitPost;
+import com.ject.highfive.recruit.entity.RecruitPostStatus;
 import com.ject.highfive.recruit.entity.WantedCareerLevel;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.Objects;
 import java.util.stream.Stream;
@@ -24,13 +26,16 @@ public final class RecruitPostSpecifications {
       String region,
       Collection<Genre> genres,
       Collection<WantedCareerLevel> careerLevels,
-      String keyword) {
+      String keyword,
+      boolean hideClosed,
+      LocalDate today) {
     return Stream.of(
             notDeleted(),
             regionEq(region),
             genreIn(genres),
             careerLevelIn(careerLevels),
-            keywordContains(keyword))
+            keywordContains(keyword),
+            openOnly(hideClosed, today))
         .filter(Objects::nonNull)
         .reduce(Specification::and)
         .orElseThrow();
@@ -74,6 +79,8 @@ public final class RecruitPostSpecifications {
             cb.equal(root.get("wantedCareerLevel"), WantedCareerLevel.ANY));
   }
 
+  // 지역 코드(SEOUL)로는 "마포" 같은 검색어가 잡히지 않아 주소에서 찾는다 (225 스펙 4.5).
+  // 주소가 null이면 LIKE가 참이 아니어서 제목으로만 걸린다
   static Specification<RecruitPost> keywordContains(String keyword) {
     if (keyword == null || keyword.isBlank()) {
       return null;
@@ -82,7 +89,18 @@ public final class RecruitPostSpecifications {
     return (root, query, cb) ->
         cb.or(
             cb.like(root.get("concert").get("title"), pattern, LIKE_ESCAPE),
-            cb.like(root.get("description"), pattern, LIKE_ESCAPE));
+            cb.like(root.get("concert").get("address"), pattern, LIKE_ESCAPE));
+  }
+
+  // 응답 status(RecruitPost.isClosed)와 같은 기준. 마감일이 오늘인 공고는 아직 모집 중이다 (D10, 225 스펙 4.6)
+  static Specification<RecruitPost> openOnly(boolean hideClosed, LocalDate today) {
+    if (!hideClosed) {
+      return null;
+    }
+    return (root, query, cb) ->
+        cb.and(
+            cb.equal(root.get("status"), RecruitPostStatus.RECRUITING),
+            cb.greaterThanOrEqualTo(root.get("deadline"), today));
   }
 
   private static String escapeLike(String value) {
