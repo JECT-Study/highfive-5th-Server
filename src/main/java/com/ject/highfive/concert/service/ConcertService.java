@@ -19,7 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 // 생성 검사 순서: 시작·종료 시간 짝(400) → 공연 날짜(400) → 권한(나중에 403)
-// 수정 검사 순서: 시간 짝(400) → 공연 존재(404) → 권한(나중에 403) → 버전(409) → 바꾼 날짜가 과거(400)
+// 수정 검사 순서: 시간 짝(400) → 공연 존재(404) → 참여 팀 멤버(403) → 버전(409) → 바꾼 날짜가 과거(400)
 //   → 공고 마감일보다 이른 날짜(400) → 합류 팀 수(409)
 @Service
 @Transactional
@@ -31,6 +31,7 @@ public class ConcertService {
   private final ConcertRepository concertRepository;
   private final ConcertTeamRepository concertTeamRepository;
   private final RecruitPostRepository recruitPostRepository;
+  private final ConcertAccessChecker concertAccessChecker;
 
   public ConcertCreateResponse create(Long userId, ConcertCreateRequest request) {
     validatePerformTime(request.startTime(), request.endTime());
@@ -54,7 +55,7 @@ public class ConcertService {
         concertRepository
             .findByIdAndDeletedAtIsNull(concertId)
             .orElseThrow(() -> new BusinessException(ConcertErrorCode.CONCERT_NOT_FOUND));
-    // TODO: JECT-248 #58 머지 후 이 공연의 참여 팀 멤버인지 확인한다 (403 AUTH_005)
+    concertAccessChecker.checkParticipant(concertId, userId);
     // 수정 화면을 연 뒤 다른 멤버가 먼저 고쳤으면 옛 화면 값으로 덮어쓰지 않는다 (의사결정 D12)
     if (!request.version().equals(concert.getVersion())) {
       throw new BusinessException(ConcertErrorCode.CONCERT_MODIFIED_BY_OTHER);

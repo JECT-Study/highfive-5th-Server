@@ -6,6 +6,7 @@ import com.ject.highfive.concert.entity.Genre;
 import com.ject.highfive.recruit.entity.WantedCareerLevel;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Page;
@@ -41,6 +42,14 @@ class DummyBandStoreTest {
     assertThat(band.name()).isEqualTo("새벽세시");
     assertThat(band.genres()).containsExactly(Genre.ROCK, Genre.INDIE);
     assertThat(band.memberCount()).isEqualTo(4);
+  }
+
+  @Test
+  @DisplayName("사용자가 멤버인 밴드의 id를 돌려주고 멤버가 아니면 빈 집합이다")
+  void findBandIdsByUserId() {
+    assertThat(store.findBandIdsByUserId(1L)).containsExactly(1L);
+    assertThat(store.findBandIdsByUserId(5L)).containsExactly(5L);
+    assertThat(store.findBandIdsByUserId(99L)).isEmpty();
   }
 
   private static final PageRequest FIRST_PAGE = PageRequest.of(0, 10);
@@ -92,7 +101,8 @@ class DummyBandStoreTest {
                     3,
                     "SEOUL",
                     WantedCareerLevel.Y1_TO_3,
-                    LocalDateTime.of(2026, 11, 1, 10, 0))));
+                    LocalDateTime.of(2026, 11, 1, 10, 0),
+                    Set.of(1L))));
 
     assertThat(ids(latinStore.search("BLUE", null, null, null, FIRST_PAGE))).containsExactly(1L);
     assertThat(ids(latinStore.search("the b", null, null, null, FIRST_PAGE))).containsExactly(1L);

@@ -5,9 +5,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.ject.highfive.concert.dto.ConcertUpdateRequest;
 import com.ject.highfive.concert.entity.Concert;
+import com.ject.highfive.concert.entity.ConcertTeam;
 import com.ject.highfive.concert.entity.Genre;
 import com.ject.highfive.concert.exception.ConcertErrorCode;
 import com.ject.highfive.concert.repository.ConcertRepository;
+import com.ject.highfive.concert.repository.ConcertTeamRepository;
 import com.ject.highfive.global.exception.BusinessException;
 import com.ject.highfive.support.ConcertFixture;
 import com.ject.highfive.support.MySqlContainerConfig;
@@ -36,10 +38,12 @@ class ConcertServiceConcurrencyTest {
 
   @Autowired ConcertService concertService;
   @Autowired ConcertRepository concertRepository;
+  @Autowired ConcertTeamRepository concertTeamRepository;
   @Autowired TransactionTemplate transactionTemplate;
 
   @AfterEach
   void cleanUp() {
+    concertTeamRepository.deleteAll();
     concertRepository.deleteAll();
   }
 
@@ -62,7 +66,11 @@ class ConcertServiceConcurrencyTest {
   @Test
   @DisplayName("같은 버전으로 동시에 수정하면 뒤 요청은 앞 요청이 끝날 때까지 기다렸다가 CONCERT_012를 받는다")
   void concurrentSameVersionUpdateWaitsThenRejected() throws Exception {
-    Long concertId = concertRepository.saveAndFlush(ConcertFixture.concert()).getId();
+    Concert saved = concertRepository.saveAndFlush(ConcertFixture.concert());
+    // 요청자(사용자 3)가 호스트 밴드(3)의 멤버라 참여 팀 멤버 확인을 통과한다
+    concertTeamRepository.saveAndFlush(
+        ConcertTeam.builder().concert(saved).bandId(ConcertFixture.HOST_BAND_ID).build());
+    Long concertId = saved.getId();
     CountDownLatch firstLocked = new CountDownLatch(1);
     CountDownLatch releaseFirst = new CountDownLatch(1);
     ExecutorService executor = Executors.newFixedThreadPool(2);
@@ -95,7 +103,7 @@ class ConcertServiceConcurrencyTest {
 
       // B: A와 같은 버전(0)을 보고 고친 요청
       Future<?> second =
-          executor.submit(() -> concertService.update(concertId, 2L, request("나중에 고친 제목", 0L)));
+          executor.submit(() -> concertService.update(concertId, 3L, request("나중에 고친 제목", 0L)));
 
       // 락이 없으면 B는 A를 기다리지 않고 바로 끝난다
       Thread.sleep(500);

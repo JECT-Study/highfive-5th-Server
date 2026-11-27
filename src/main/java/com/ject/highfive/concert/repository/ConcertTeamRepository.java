@@ -12,6 +12,10 @@ public interface ConcertTeamRepository extends JpaRepository<ConcertTeam, Long> 
 
   long countByConcertIdAndStatusAndBandIdNot(Long concertId, ConcertTeamStatus status, Long bandId);
 
+  // 참여 팀 멤버 확인(JECT-226). 사용자가 속한 밴드 중 하나라도 이 공연의 해당 상태 팀이면 true
+  boolean existsByConcertIdAndStatusAndBandIdIn(
+      Long concertId, ConcertTeamStatus status, Collection<Long> bandIds);
+
   // 공고 목록(2.5)의 합류 팀 수. 주최 팀은 빼고 센다(recruitTeamCount와 같은 기준). 팀이 없는 공연은 결과에 없다
   @Query(
       "select t.concert.id as concertId, count(t) as joinedTeamCount from ConcertTeam t"

@@ -56,8 +56,9 @@ public class ConcertController {
               + "CONCERT_012(다른 멤버가 먼저 수정함, 다시 불러온 뒤 수정), "
               + "CONCERT_002(공연 날짜를 오늘 이전으로 바꿈), "
               + "CONCERT_011(공연 날짜가 진행 중인 모집 공고 마감일보다 빠름), "
-              + "CONCERT_003(모집 팀 수가 주최 팀을 뺀 합류 팀 수보다 적음)\n\n"
-              + "**참여 팀 멤버 확인은 아직 하지 않는다**")
+              + "CONCERT_003(모집 팀 수가 주최 팀을 뺀 합류 팀 수보다 적음), "
+              + "AUTH_005(참여 팀 멤버가 아님)\n\n"
+              + "**참여 팀 멤버는 밴드 정보가 없어 임시 목록으로 확인한다: 밴드 1~5의 멤버가 사용자 1~5**")
   @PutMapping("/{concertId}")
   public ApiResponse<Map<String, Object>> update(
       @Parameter(description = "공연 ID") @PathVariable Long concertId,

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
@@ -18,6 +19,7 @@ import com.ject.highfive.concert.entity.Genre;
 import com.ject.highfive.concert.exception.ConcertErrorCode;
 import com.ject.highfive.concert.repository.ConcertRepository;
 import com.ject.highfive.concert.repository.ConcertTeamRepository;
+import com.ject.highfive.global.exception.AuthErrorCode;
 import com.ject.highfive.global.exception.BusinessException;
 import com.ject.highfive.recruit.entity.RecruitPost;
 import com.ject.highfive.recruit.entity.RecruitPostStatus;
@@ -53,6 +55,7 @@ class ConcertServiceTest {
   @Mock ConcertRepository concertRepository;
   @Mock ConcertTeamRepository concertTeamRepository;
   @Mock RecruitPostRepository recruitPostRepository;
+  @Mock ConcertAccessChecker concertAccessChecker;
   @InjectMocks ConcertService service;
 
   private ConcertCreateRequest request(LocalDate performDate, LocalTime start, LocalTime end) {
@@ -129,6 +132,60 @@ class ConcertServiceTest {
 
   private ConcertUpdateRequest updateRequest(LocalDate performDate) {
     return updateRequest(performDate, START, END, 3);
+  }
+
+  private void givenNotParticipant() {
+    willThrow(new BusinessException(AuthErrorCode.FORBIDDEN))
+        .given(concertAccessChecker)
+        .checkParticipant(CONCERT_ID, USER_ID);
+  }
+
+  @Test
+  @DisplayName("참여 팀 멤버가 아니면 AUTH_005이고 공연은 그대로다")
+  void nonParticipantRejected() {
+    Concert concert = existingConcert(FUTURE);
+    givenNotParticipant();
+
+    assertThatThrownBy(() -> service.update(CONCERT_ID, USER_ID, updateRequest(FUTURE)))
+        .isInstanceOf(BusinessException.class)
+        .extracting("errorCode")
+        .isEqualTo(AuthErrorCode.FORBIDDEN);
+    assertThat(concert.getTitle()).isEqualTo("겨울 합동공연");
+  }
+
+  @Test
+  @DisplayName("참여 팀 멤버면 수정하고 이 공연·사용자로 검사한다")
+  void participantUpdates() {
+    Concert concert = existingConcert(FUTURE);
+
+    service.update(CONCERT_ID, USER_ID, updateRequest(FUTURE));
+
+    verify(concertAccessChecker).checkParticipant(CONCERT_ID, USER_ID);
+    assertThat(concert.getTitle()).isEqualTo("봄 합동공연");
+  }
+
+  @Test
+  @DisplayName("공연이 없으면 권한 검사 전에 CONCERT_001이다")
+  void missingConcertIsNotFoundBeforePermission() {
+    given(concertRepository.findByIdAndDeletedAtIsNull(CONCERT_ID)).willReturn(Optional.empty());
+
+    assertError(
+        () -> service.update(CONCERT_ID, USER_ID, updateRequest(FUTURE)),
+        ConcertErrorCode.CONCERT_NOT_FOUND);
+    verifyNoInteractions(concertAccessChecker);
+  }
+
+  @Test
+  @DisplayName("멤버가 아니면 버전이 달라도 CONCERT_012가 아니라 AUTH_005다")
+  void permissionCheckedBeforeVersion() {
+    existingConcert(FUTURE);
+    givenNotParticipant();
+
+    assertThatThrownBy(
+            () -> service.update(CONCERT_ID, USER_ID, updateRequest(FUTURE, START, END, 3, 0L)))
+        .isInstanceOf(BusinessException.class)
+        .extracting("errorCode")
+        .isEqualTo(AuthErrorCode.FORBIDDEN);
   }
 
   @Test
