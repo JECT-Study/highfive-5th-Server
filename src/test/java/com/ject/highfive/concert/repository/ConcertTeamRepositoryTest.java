@@ -8,8 +8,10 @@ import com.ject.highfive.concert.entity.ConcertTeam;
 import com.ject.highfive.concert.entity.ConcertTeamStatus;
 import com.ject.highfive.support.ConcertFixture;
 import com.ject.highfive.support.MySqlRepositoryTest;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -109,5 +111,27 @@ class ConcertTeamRepositoryTest {
     assertThat(concertTeamRepository.findLineup(concert.getId(), ConcertTeamStatus.JOINED))
         .extracting(ConcertTeam::getId)
         .containsExactly(host.getId(), second.getId(), noOrderFirst.getId(), noOrderSecond.getId());
+  }
+
+  private boolean existsJoined(Concert concert, Collection<Long> bandIds) {
+    return concertTeamRepository.existsByConcertIdAndStatusAndBandIdIn(
+        concert.getId(), ConcertTeamStatus.JOINED, bandIds);
+  }
+
+  @Test
+  @DisplayName("밴드 중 하나라도 이 공연의 JOINED 팀이면 true이고 나간 팀·강퇴된 팀·다른 공연의 팀은 false")
+  void existsJoinedTeamOfBands() {
+    Concert concert = savedConcert();
+    savedTeam(concert, 11L);
+    savedTeam(concert, 12L).leave();
+    savedTeam(concert, 13L).kick();
+    savedTeam(savedConcert(), 14L);
+    concertTeamRepository.flush();
+
+    assertThat(existsJoined(concert, Set.of(11L, 99L))).isTrue();
+    assertThat(existsJoined(concert, Set.of(12L))).isFalse();
+    assertThat(existsJoined(concert, Set.of(13L))).isFalse();
+    assertThat(existsJoined(concert, Set.of(14L))).isFalse();
+    assertThat(existsJoined(concert, Set.of(99L))).isFalse();
   }
 }
