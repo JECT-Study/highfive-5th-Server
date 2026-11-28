@@ -96,3 +96,13 @@ sudo CERTBOT_EMAIL=이메일 bash /home/ubuntu/app/nginx/setup.sh dev-api.exampl
 ```
 
 `./gradlew check`가 통과해야 PR을 올릴 수 있습니다. PR을 올리면 GitHub Actions(`.github/workflows/ci.yml`)가 같은 검사를 다시 돌립니다. 실패하면 Actions 탭의 `reports` 아티팩트에서 Checkstyle·테스트 리포트를 볼 수 있습니다.
+
+## Discord 알림
+
+`.github/workflows/discord-notify.yml`이 아래 이벤트를 Discord 채널로 보냅니다. PR 제목에 `JECT-123`이 있으면 Jira 링크도 붙습니다.
+
+- PR이 열렸을 때 (draft 제외, draft에서 리뷰 준비로 바꾸면 그때 알림)
+- PR이 머지됐을 때
+- `develop`의 CI가 실패했을 때
+
+webhook URL은 레포 Settings → Secrets and variables → Actions의 `DISCORD_WEBHOOK_URL`에 둡니다. 등록하지 않으면 알림만 건너뛰고 워크플로는 성공합니다.
